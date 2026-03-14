@@ -456,74 +456,128 @@ def _stream_from_llm(messages: List[Dict], temperature: float = 0.3,
 def stream_finetuned(question: str, table: str = "",
                      context: str = "") -> Generator[str, None, None]:
     """Stream from Mistral with financial-expert system prompt."""
+    start = time.perf_counter()
     prompt = _build_finetuned_prompt(question, table, context)
     yield from _stream_from_llm([
         {"role": "system", "content": FINETUNED_SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
     ], temperature=0.1)
-    yield f"\n\n---\n*Model: {LLM_MODEL} with financial-expert system prompt*"
+    total_ms = (time.perf_counter() - start) * 1000
+    yield (f"\n\n---\n"
+           f"**Total time: {total_ms:.0f}ms** | No retrieval step\n\n"
+           f"*Model: {LLM_MODEL} with financial-expert system prompt*")
 
 
 def stream_rag(question: str, table: str = "",
                context: str = "") -> Generator[str, None, None]:
-    """Stream RAG: retrieve real documents, then generate with Mistral."""
-    yield "**Step 1 -- Retrieving from knowledge base...**\n\n"
+    """Stream RAG: retrieve real documents, then generate with Mistral.
+    Shows output and timing for every step."""
+    total_start = time.perf_counter()
 
+    # Step 1: Embedding the query
+    yield "**Step 1/3 -- Embedding query...**\n\n"
+    embed_start = time.perf_counter()
     try:
         rag = _get_rag()
-        result = rag.retrieve(question, top_k=3)
-        for i, (doc, src, dist) in enumerate(
-                zip(result.documents, result.sources, result.distances), 1):
-            yield (f"> **[Doc {i}]** _{src}_ (similarity: {1 - dist:.2f})\n"
-                   f"> {doc[:200]}...\n\n")
-        yield (f"*Retrieved {len(result.documents)} chunks from "
-               f"{result.num_chunks_searched} indexed "
-               f"({result.latency_ms:.0f}ms)*\n\n")
-        docs = result.documents
     except Exception as e:
-        yield f"*Retrieval error: {e}*\n\n"
-        docs = []
+        yield f"*RAG init error: {e}*\n\n"
+        return
+    embed_ms = (time.perf_counter() - embed_start) * 1000
+    yield f"Query embedded into 384-dim vector ({embed_ms:.0f}ms)\n\n"
 
-    yield "**Step 2 -- Generating answer with retrieved context...**\n\n"
+    # Step 2: Retrieval from ChromaDB
+    yield "**Step 2/3 -- Searching vector store (ChromaDB)...**\n\n"
+    retrieve_start = time.perf_counter()
+    result = rag.retrieve(question, top_k=3)
+    retrieve_ms = (time.perf_counter() - retrieve_start) * 1000
+
+    for i, (doc, src, dist) in enumerate(
+            zip(result.documents, result.sources, result.distances), 1):
+        sim = 1 - dist
+        yield (f"> **[Doc {i}]** _{src}_ (cosine similarity: {sim:.3f})\n"
+               f"> {doc[:250]}...\n\n")
+    yield (f"Retrieved **{len(result.documents)}** chunks from "
+           f"{result.num_chunks_searched} indexed | "
+           f"Retrieval time: **{retrieve_ms:.0f}ms**\n\n")
+    docs = result.documents
+
+    # Step 3: LLM Generation
+    yield "**Step 3/3 -- LLM generating answer from retrieved context...**\n\n"
+    gen_start = time.perf_counter()
     prompt = _build_rag_prompt(question, table, context, docs)
     yield from _stream_from_llm([{"role": "user", "content": prompt}])
-    yield f"\n\n---\n*Model: {LLM_MODEL} + RAG ({len(docs)} documents)*"
+    gen_ms = (time.perf_counter() - gen_start) * 1000
+
+    total_ms = (time.perf_counter() - total_start) * 1000
+
+    yield (f"\n\n---\n"
+           f"**Pipeline timing:**\n"
+           f"| Step | Time |\n"
+           f"|------|------|\n"
+           f"| 1. Embed query | {embed_ms:.0f}ms |\n"
+           f"| 2. Vector search | {retrieve_ms:.0f}ms |\n"
+           f"| 3. LLM generation | {gen_ms:.0f}ms |\n"
+           f"| **Total** | **{total_ms:.0f}ms** |\n\n"
+           f"*Model: {LLM_MODEL} + RAG ({len(docs)} documents)*")
 
 
 def stream_base(question: str, table: str = "",
                 context: str = "") -> Generator[str, None, None]:
     """Stream from base Mistral -- no RAG, no system prompt."""
+    start = time.perf_counter()
     prompt = _build_base_prompt(question, table, context)
     yield from _stream_from_llm([{"role": "user", "content": prompt}])
-    yield f"\n\n---\n*Model: {LLM_MODEL} (base, no fine-tuning, no RAG)*"
+    total_ms = (time.perf_counter() - start) * 1000
+    yield (f"\n\n---\n"
+           f"**Total time: {total_ms:.0f}ms** | No retrieval, no system prompt\n\n"
+           f"*Model: {LLM_MODEL} (base, no fine-tuning, no RAG)*")
 
 
 def stream_hybrid(question: str, table: str = "",
                   context: str = "") -> Generator[str, None, None]:
-    """Stream hybrid: RAG retrieval + fine-tuned-style generation."""
-    yield "**Step 1 -- Retrieving supporting documents...**\n\n"
+    """Stream hybrid: RAG retrieval + fine-tuned-style generation.
+    Shows per-step timing."""
+    total_start = time.perf_counter()
 
+    # Step 1: Retrieval
+    yield "**Step 1/2 -- Retrieving supporting documents...**\n\n"
+    retrieve_start = time.perf_counter()
     try:
         rag = _get_rag()
         result = rag.retrieve(question, top_k=3)
+        retrieve_ms = (time.perf_counter() - retrieve_start) * 1000
         for i, (doc, src, dist) in enumerate(
                 zip(result.documents, result.sources, result.distances), 1):
-            yield (f"> **[Doc {i}]** _{src}_ (similarity: {1 - dist:.2f})\n"
-                   f"> {doc[:200]}...\n\n")
-        yield (f"*Retrieved {len(result.documents)} chunks "
-               f"({result.latency_ms:.0f}ms)*\n\n")
+            sim = 1 - dist
+            yield (f"> **[Doc {i}]** _{src}_ (cosine similarity: {sim:.3f})\n"
+                   f"> {doc[:250]}...\n\n")
+        yield (f"Retrieved **{len(result.documents)}** chunks | "
+               f"Retrieval time: **{retrieve_ms:.0f}ms**\n\n")
         docs = result.documents
     except Exception as e:
         yield f"*Retrieval error: {e}*\n\n"
         docs = []
+        retrieve_ms = 0
 
-    yield "**Step 2 -- Fine-tuned model generating with context...**\n\n"
+    # Step 2: Expert generation with context
+    yield "**Step 2/2 -- Expert model generating with retrieved context...**\n\n"
+    gen_start = time.perf_counter()
     prompt = _build_hybrid_prompt(question, table, context, docs)
     yield from _stream_from_llm([
         {"role": "system", "content": FINETUNED_SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
     ], temperature=0.1)
-    yield f"\n\n---\n*Model: {LLM_MODEL} hybrid (expert prompt + RAG)*"
+    gen_ms = (time.perf_counter() - gen_start) * 1000
+    total_ms = (time.perf_counter() - total_start) * 1000
+
+    yield (f"\n\n---\n"
+           f"**Pipeline timing:**\n"
+           f"| Step | Time |\n"
+           f"|------|------|\n"
+           f"| 1. Embed + retrieve | {retrieve_ms:.0f}ms |\n"
+           f"| 2. Expert LLM generation | {gen_ms:.0f}ms |\n"
+           f"| **Total** | **{total_ms:.0f}ms** |\n\n"
+           f"*Model: {LLM_MODEL} hybrid (expert prompt + RAG)*")
 
 
 # ---------------------------------------------------------------------------

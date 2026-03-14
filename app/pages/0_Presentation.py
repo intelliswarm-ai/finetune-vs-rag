@@ -111,7 +111,6 @@ st.markdown("""
 # ---------------------------------------------------------------------------
 # Slide definitions
 # ---------------------------------------------------------------------------
-TOTAL_SLIDES = 22
 
 
 def slide_title():
@@ -560,8 +559,151 @@ def slide_finetuning_benefits():
                 """, unsafe_allow_html=True)
 
 
+def slide_models_used():
+    """Models used in this demo and their training"""
+    st.markdown('<p class="slide-title">Our Fine-Tuned Models: Under the Hood</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">Real models, real training data, published research</p>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        <div class="green-box">
+        <strong>FinBERT -- Financial Sentiment Classification</strong><br/><br/>
+        <strong>Base model:</strong> BERT-base-uncased (110M parameters)<br/>
+        <strong>Fine-tuned by:</strong> Prosus AI (Dogu Araci, 2019)<br/>
+        <strong>HuggingFace:</strong> <code>ProsusAI/finbert</code><br/><br/>
+        <strong>What was changed:</strong> The final classification head was added
+        and the entire model was further pre-trained on financial text, then
+        fine-tuned for 3-class sentiment (positive, negative, neutral).<br/><br/>
+        <strong>Paper:</strong> <em>"FinBERT: Financial Sentiment Analysis with
+        Pre-Trained Language Models"</em> (2019)
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="blue-box">
+        <strong>Training Data for FinBERT</strong><br/><br/>
+        <strong>Pre-training corpus:</strong><br/>
+        - Reuters TRC2 financial news corpus (46,143 articles)<br/>
+        - Financial communication texts, analyst reports<br/><br/>
+        <strong>Fine-tuning dataset:</strong> Financial PhraseBank<br/>
+        - 4,840 sentences from English-language financial news<br/>
+        - Labeled by 16 domain-expert annotators<br/>
+        - 3 classes: positive, negative, neutral<br/>
+        - Agreement levels: 50%, 66%, 75%, 100%<br/>
+        - Created at Aalto University (Malo et al., 2014)<br/>
+        - HuggingFace: <code>takala/financial_phrasebank</code>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="green-box">
+        <strong>FinQA-7B -- Financial Numerical Reasoning</strong><br/><br/>
+        <strong>Base model:</strong> Mistral-7B-Instruct-v0.1 (7B parameters)<br/>
+        <strong>Fine-tuned by:</strong> Community (truocpham)<br/>
+        <strong>HuggingFace:</strong> <code>truocpham/FinQA-7B-Instruct-v0.1</code><br/><br/>
+        <strong>What was changed:</strong> The model was fine-tuned using QLoRA
+        (4-bit quantized Low-Rank Adaptation) on the FinQA dataset to learn
+        multi-step numerical reasoning over financial tables.<br/><br/>
+        <strong>Benchmark:</strong> 61.2% execution accuracy on FinQA test set
+        (vs ~15% for RAG with the same base model)
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="blue-box">
+        <strong>Training Data for FinQA-7B</strong><br/><br/>
+        <strong>Dataset:</strong> FinQA (IBM Research, 2021)<br/>
+        - 8,281 question-answer pairs<br/>
+        - Sourced from S&P 500 company SEC filings (10-K, 10-Q)<br/>
+        - Each example contains:<br/>
+        &nbsp;&nbsp;- A financial data table<br/>
+        &nbsp;&nbsp;- Pre/post context paragraphs<br/>
+        &nbsp;&nbsp;- A numerical reasoning question<br/>
+        &nbsp;&nbsp;- A step-by-step reasoning program<br/>
+        &nbsp;&nbsp;- The correct numerical answer<br/>
+        - HuggingFace: <code>ibm-research/finqa</code><br/><br/>
+        <strong>Paper:</strong> <em>"FinQA: A Dataset of Numerical Reasoning
+        over Financial Data"</em> (Chen et al., EMNLP 2021)
+        </div>
+        """, unsafe_allow_html=True)
+
+
+def slide_training_data_detail():
+    """Training data examples and what the models learned"""
+    st.markdown('<p class="slide-title">What the Training Data Looks Like</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">Concrete examples from FinQA and Financial PhraseBank</p>', unsafe_allow_html=True)
+
+    st.markdown("### FinQA Training Example (Numerical Reasoning)")
+    st.markdown("""
+    Each training example teaches the model HOW to reason, not just WHAT to answer:
+    """)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Input (table + question):**")
+        st.code("""Table:
+| Segment       | 2019    | 2018    |
+|---------------|---------|---------|
+| Products      | $4,231  | $3,891  |
+| Services      | $2,107  | $1,988  |
+
+Context: "Revenue growth was driven by
+increased demand in the Products segment."
+
+Question: "What was the total revenue
+growth rate from 2018 to 2019?" """, language=None)
+
+    with col2:
+        st.markdown("**Training label (reasoning + answer):**")
+        st.code("""Reasoning program:
+  add(3891, 1988) -> 5879    [2018 total]
+  add(4231, 2107) -> 6338    [2019 total]
+  subtract(6338, 5879) -> 459
+  divide(459, 5879) -> 0.0781
+
+Answer: 7.81%
+
+The model learns the STEPS, not just
+the final number.""", language=None)
+
+    st.markdown("---")
+    st.markdown("### Financial PhraseBank Training Examples (Sentiment)")
+    st.markdown("The model learns that financial vocabulary has domain-specific meaning:")
+
+    import pandas as pd
+    examples = {
+        "Sentence": [
+            "Operating profit rose to EUR 13.1 million from EUR 8.7 million",
+            "Management expects headwinds from deposit competition to persist",
+            "The company maintained its quarterly dividend at $0.50",
+            "Restructuring charges totaled $450M in one-time write-downs",
+            "The Board of Directors will propose a dividend of EUR 0.12 per share",
+        ],
+        "Label": ["POSITIVE", "NEGATIVE", "NEUTRAL", "NEGATIVE", "NEUTRAL"],
+        "Why (what FinBERT learned)": [
+            "'Rose' + specific growth numbers = positive",
+            "'Headwinds' + 'persist' = negative (domain jargon)",
+            "'Maintained' = no change = neutral (not positive!)",
+            "'Restructuring charges' + 'write-downs' = negative",
+            "Dividend proposal = routine announcement = neutral",
+        ],
+    }
+    st.table(pd.DataFrame(examples))
+
+    st.markdown("""
+    <div class="orange-box">
+    <strong>Key insight:</strong> The training data teaches the model that "headwinds"
+    is negative and "maintained" is neutral -- vocabulary meanings that are specific
+    to finance. A generic model without this training would not know these distinctions.
+    </div>
+    """, unsafe_allow_html=True)
+
+
 def slide_head_to_head():
-    """Slide 11: Head-to-Head Comparison"""
+    """Head-to-Head Comparison"""
     st.markdown('<p class="slide-title">Head-to-Head: RAG vs Fine-Tuning</p>', unsafe_allow_html=True)
 
     import pandas as pd
@@ -1226,6 +1368,8 @@ SLIDES = [
     ("Fine-Tuning: How It Works", slide_finetuning_explained),
     ("Fine-Tuning: Methods", slide_finetuning_methods),
     ("Fine-Tuning: Benefits", slide_finetuning_benefits),
+    ("Our Models & Training Data", slide_models_used),
+    ("Training Data Examples", slide_training_data_detail),
     ("Head-to-Head Comparison", slide_head_to_head),
     ("When RAG Falls Short", slide_rag_falls_short),
     ("Decision Framework", slide_decision_framework),
