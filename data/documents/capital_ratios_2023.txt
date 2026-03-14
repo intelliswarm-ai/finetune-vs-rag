@@ -1,0 +1,19 @@
+MERIDIAN NATIONAL BANCORP -- CAPITAL ADEQUACY AND REGULATORY RATIOS, FY 2023
+===============================================================================
+
+The Company maintains capital levels well in excess of regulatory minimums, consistent with its commitment to fortress-level balance sheet strength. The following capital ratios are presented on a fully phased-in basis under the Basel III Standardized Approach as of December 31, 2023.
+
+COMMON EQUITY TIER 1 (CET1) CAPITAL RATIO
+CET1 capital was $98.4 billion, resulting in a CET1 ratio of 13.2%, compared to 12.8% at year-end 2022. The regulatory minimum is 4.5%, plus a Stress Capital Buffer (SCB) of 3.2% and a Global Systemically Important Bank (G-SIB) surcharge of 2.0%, resulting in a total CET1 requirement of 9.7%. The Company's CET1 ratio exceeds the requirement by 350 basis points, representing approximately $26.1 billion in excess CET1 capital.
+
+TIER 1 CAPITAL RATIO
+Tier 1 capital totaled $112.6 billion, including $14.2 billion of additional Tier 1 instruments (primarily preferred stock and qualifying trust preferred securities). The Tier 1 capital ratio was 15.1%, well above the regulatory minimum requirement of 11.2% (including buffers). This compares to 14.7% at the end of FY 2022.
+
+TOTAL CAPITAL RATIO
+Total regulatory capital was $131.8 billion, inclusive of $19.2 billion of Tier 2 capital (subordinated debt and qualifying loan loss reserves). The Total Capital ratio was 17.7%, exceeding the minimum requirement of 13.2% by 450 basis points. The prior year total capital ratio was 17.2%.
+
+SUPPLEMENTARY LEVERAGE RATIO (SLR)
+The Supplementary Leverage Ratio was 6.4%, well above the 5.0% minimum applicable to G-SIBs (3.0% minimum plus 2.0% buffer). Total leverage exposure was $1.76 trillion. The improvement from 6.1% at year-end 2022 was driven by retained earnings growth and optimization of low-return balance sheet exposures.
+
+RISK-WEIGHTED ASSETS
+Total risk-weighted assets (RWA) were $745 billion as of December 31, 2023, compared to $724 billion at year-end 2022. The 2.9% increase reflects loan growth in the commercial and consumer portfolios, partially offset by active securitization and risk transfer activity that reduced RWA by approximately $12 billion during the year.

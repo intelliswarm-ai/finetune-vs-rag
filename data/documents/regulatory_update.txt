@@ -1,0 +1,16 @@
+MERIDIAN NATIONAL BANCORP -- REGULATORY AND COMPLIANCE UPDATE, FY 2023
+========================================================================
+
+The Company is subject to comprehensive regulation and supervision by the Federal Reserve Board, the Office of the Comptroller of the Currency (OCC), the Consumer Financial Protection Bureau (CFPB), and the Federal Deposit Insurance Corporation (FDIC). The following summarizes key regulatory developments and the Company's compliance posture.
+
+BASEL III ENDGAME
+In July 2023, U.S. banking regulators issued a Notice of Proposed Rulemaking (NPR) to implement the Basel III endgame framework. As proposed, the rule would expand the use of the Standardized Approach and eliminate the use of internal models for credit risk capital calculations for large banks. The Company estimates that the proposed rules, if implemented as drafted, would increase risk-weighted assets by approximately $68 billion to $82 billion, or 9% to 11%, and reduce the CET1 ratio by approximately 120 to 150 basis points. Management is actively engaging with regulators during the comment period and evaluating mitigation strategies including balance sheet optimization and portfolio adjustments.
+
+STRESS TESTING (DFAST/CCAR)
+Under the 2023 Dodd-Frank Act Stress Test (DFAST), the Company's CET1 ratio declined from 13.2% to a minimum of 8.6% under the severely adverse scenario, maintaining a buffer of 410 basis points above the 4.5% regulatory minimum. The resulting Stress Capital Buffer (SCB) was set at 3.2%, unchanged from the prior year. Total projected losses under the severely adverse scenario were $38.4 billion over the nine-quarter horizon, including $24.1 billion of loan losses.
+
+LIQUIDITY REQUIREMENTS
+The Company's Liquidity Coverage Ratio (LCR) was 118% as of December 31, 2023, well above the 100% regulatory minimum. High-quality liquid assets (HQLA) totaled $284 billion, consisting of $196 billion in U.S. Treasuries and agency securities and $88 billion in central bank reserves. The Net Stable Funding Ratio (NSFR) was 112%, exceeding the 100% minimum requirement. Available stable funding was $892 billion against required stable funding of $796 billion.
+
+RESOLUTION PLANNING
+The Company submitted its biennial resolution plan (living will) in June 2023. The plan demonstrated the Company's ability to be resolved in an orderly manner under the U.S. Bankruptcy Code without systemic disruption. Regulators identified no deficiencies or shortcomings in the most recent review cycle.

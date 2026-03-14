@@ -1,0 +1,17 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.git/
+.claude/
+.env
+data/chroma_db/
+results/*.json
+results/*.csv
+*.egg-info/
+dist/
+build/
+.idea/
+.vscode/
+notebooks/.ipynb_checkpoints/
+models_cache/

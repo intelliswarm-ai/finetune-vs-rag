@@ -1,0 +1,17 @@
+MERIDIAN NATIONAL BANCORP -- RISK MANAGEMENT OVERVIEW, FY 2023
+================================================================
+
+The Company maintains a comprehensive risk management framework overseen by the Chief Risk Officer and the Board Risk Committee. The following summarizes key risk exposures and metrics for the fiscal year ended December 31, 2023.
+
+CREDIT RISK
+The provision for credit losses was $5.8 billion for FY 2023, compared to $3.9 billion in FY 2022, an increase of 48.7%. The increase was driven primarily by a deterioration in the forward-looking macroeconomic scenarios used in the Company's Current Expected Credit Losses (CECL) model, as well as specific reserves related to the commercial real estate office segment.
+
+Net charge-offs totaled $4.2 billion, or 0.57% of average loans, compared to $2.8 billion, or 0.40%, in the prior year. The nonperforming loan (NPL) ratio increased to 0.83% from 0.62% at year-end 2022. Nonperforming assets totaled $6.1 billion as of December 31, 2023. Criticized and classified commercial loans increased 22.3% to $18.4 billion, reflecting stress in the office and retail commercial real estate sectors.
+
+The allowance for credit losses stood at $14.7 billion at year-end, representing 2.01% of total loans and a coverage ratio of 2.42x nonperforming loans.
+
+MARKET RISK
+The Company's average 99% Value-at-Risk (VaR) for the trading portfolio was $127 million in FY 2023, compared to $118 million in FY 2022. The increase was attributable to higher interest rate and credit spread volatility. Stressed VaR averaged $341 million over the period. There were three VaR exceedances during the year, within the expected range for a 99% confidence interval. Interest rate sensitivity analysis indicates that a parallel shift of +100 basis points would increase net interest income by approximately $1.8 billion over the subsequent twelve months.
+
+OPERATIONAL RISK
+Operational risk losses totaled $623 million in FY 2023, including $214 million in litigation reserves and $187 million related to technology and cybersecurity incidents. The Company invested $2.1 billion in cybersecurity and fraud prevention infrastructure during the year, an increase of 18.6% over FY 2022.

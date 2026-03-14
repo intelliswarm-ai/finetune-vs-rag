@@ -1,0 +1,32 @@
+GLOSSARY OF KEY FINANCIAL RATIOS AND DEFINITIONS
+==================================================
+
+The following definitions and formulas are provided to assist in the interpretation of financial metrics referenced throughout the Company's filings and disclosures.
+
+DEBT-TO-EQUITY RATIO (D/E)
+Formula: Total Debt / Total Shareholders' Equity
+Measures the proportion of a company's funding derived from debt relative to equity. A D/E ratio above 1.0x indicates that debt exceeds equity. For banks, this ratio is typically higher than for non-financial corporations due to the nature of deposit-funded balance sheets. Meridian's D/E ratio as of December 31, 2023 was 2.87x.
+
+RETURN ON EQUITY (ROE)
+Formula: Net Income / Average Shareholders' Equity
+Indicates how effectively a company generates profit from shareholders' investment. Higher ROE signals more efficient capital deployment. For large banks, ROE targets typically range from 12% to 16%.
+
+RETURN ON ASSETS (ROA)
+Formula: Net Income / Average Total Assets
+Measures profitability relative to total assets. For banks, an ROA above 1.00% is generally considered strong. ROA is particularly useful for comparing institutions of different sizes.
+
+EFFICIENCY RATIO
+Formula: Noninterest Expense / (Net Interest Income + Noninterest Revenue)
+Lower values indicate greater operating efficiency. An efficiency ratio below 60% is considered favorable for large diversified banks. This metric excludes provision for credit losses.
+
+NET INTEREST MARGIN (NIM)
+Formula: (Interest Income - Interest Expense) / Average Earning Assets
+Reflects the spread a bank earns on its interest-bearing activities. NIM is a core profitability driver for traditional banking. Typical NIM for large U.S. banks ranges from 2.00% to 3.50%.
+
+CURRENT RATIO
+Formula: Current Assets / Current Liabilities
+Measures short-term liquidity and the ability to meet obligations due within one year. A ratio above 1.0x indicates sufficient liquid assets. This metric is more applicable to non-financial corporates.
+
+COVERAGE RATIO (ALLOWANCE TO NPL)
+Formula: Allowance for Credit Losses / Nonperforming Loans
+Indicates the extent to which reserves cover potential losses from impaired loans. A ratio above 1.0x means the allowance exceeds nonperforming loan balances. Higher coverage ratios provide a greater buffer against unexpected credit deterioration.

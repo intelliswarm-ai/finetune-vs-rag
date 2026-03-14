@@ -1,0 +1,32 @@
+services:
+
+  # Ollama -- runs Mistral-7B locally
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  # Demo Streamlit app
+  demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finetune-vs-rag-demo
+    ports:
+      - "8501:8501"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - LLM_MODEL=mistral
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:

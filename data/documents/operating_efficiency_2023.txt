@@ -1,0 +1,16 @@
+MERIDIAN NATIONAL BANCORP -- OPERATING EFFICIENCY AND EXPENSE MANAGEMENT, FY 2023
+====================================================================================
+
+Total noninterest expense for the fiscal year ended December 31, 2023 was $27.9 billion, an increase of 2.8% from $27.1 billion in FY 2022. The efficiency ratio improved to 57.3% from 59.1%, reflecting revenue growth that outpaced expense growth.
+
+COMPENSATION AND BENEFITS
+Compensation expense was $15.4 billion, representing 55.2% of total noninterest expense. This compares to $14.9 billion in the prior year, an increase of 3.4% driven by annual merit increases averaging 3.8%, selective hiring in technology and risk functions, and higher performance-based incentive accruals. Full-time equivalent headcount was 198,400 as of December 31, 2023, a net reduction of 2,100 from 200,500 at year-end 2022, reflecting the Company's ongoing branch optimization and automation initiatives.
+
+TECHNOLOGY INVESTMENTS
+Technology expense totaled $6.3 billion in FY 2023, an increase of 8.6% from $5.8 billion. This included $3.1 billion of run-the-bank technology costs and $3.2 billion of change-the-bank investments focused on cloud migration, artificial intelligence, and digital platform modernization. The Company migrated 42% of its application workloads to public cloud infrastructure during the year, up from 28% at year-end 2022.
+
+COST REDUCTION PROGRAMS
+The Company's multi-year efficiency program, initiated in 2021, achieved cumulative gross savings of $2.4 billion through year-end 2023, against a target of $3.0 billion by 2025. Key initiatives include: (i) branch network rationalization, with 187 branch closures during FY 2023 reducing the network to 3,412 locations; (ii) back-office process automation, which eliminated approximately 3,800 manual FTE roles over two years; and (iii) vendor contract renegotiations yielding $340 million in annual savings.
+
+OCCUPANCY AND OTHER EXPENSE
+Occupancy expense was $2.8 billion, down 4.1%, reflecting the smaller branch footprint and renegotiated corporate real estate leases. Other noninterest expense of $3.4 billion included $623 million in operational risk losses, $412 million in FDIC assessment fees, and $287 million in professional services.

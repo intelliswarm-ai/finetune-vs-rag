@@ -1,0 +1,99 @@
+{
+  "numerical_reasoning": [
+    {
+      "id": "nr_001",
+      "name": "Revenue Growth Calculation",
+      "table": "| Segment | 2023 | 2022 | 2021 |\n|---------|------|------|------|\n| Consumer Banking | $12,450 | $11,200 | $10,500 |\n| Commercial Banking | $8,320 | $7,890 | $7,200 |\n| Investment Banking | $5,180 | $6,240 | $5,800 |",
+      "text": "The decrease in Investment Banking segment revenue was primarily driven by lower trading volumes and reduced M&A advisory fees due to market uncertainty.",
+      "question": "What was the percentage change in total revenue from 2022 to 2023?",
+      "expected_answer": "2.45%",
+      "expected_steps": "2022 total = 25,330M; 2023 total = 25,950M; change = 2.45%"
+    },
+    {
+      "id": "nr_002",
+      "name": "Debt-to-Equity Ratio",
+      "table": "| Item | 2023 | 2022 |\n|------|------|------|\n| Total Debt | $52,300M | $48,900M |\n| Shareholders' Equity | $47,400M | $43,800M |",
+      "text": "The company maintained a strong capital position throughout 2023.",
+      "question": "Calculate the debt-to-equity ratio for 2023 and compare to 2022.",
+      "expected_answer": "2023 D/E: 1.10, 2022 D/E: 1.12. Leverage decreasing.",
+      "expected_steps": "2023: 52300/47400 = 1.10; 2022: 48900/43800 = 1.12"
+    },
+    {
+      "id": "nr_003",
+      "name": "Efficiency Ratio",
+      "table": "| Metric | Q4 2023 | Q4 2022 |\n|--------|---------|--------|\n| Total Revenue | $19,800M | $18,600M |\n| Operating Expenses | $11,200M | $10,400M |",
+      "text": "Operating efficiency remained a key focus for management.",
+      "question": "What is the efficiency ratio for Q4 2023 vs Q4 2022?",
+      "expected_answer": "Q4 2023: 56.6%, Q4 2022: 55.9%",
+      "expected_steps": "Q4 2023: 11200/19800 = 56.6%; Q4 2022: 10400/18600 = 55.9%"
+    },
+    {
+      "id": "nr_004",
+      "name": "ROE Calculation",
+      "table": "| Item | 2023 | 2022 |\n|------|------|------|\n| Net Income | $8,200M | $7,500M |\n| Avg Shareholders' Equity | $45,600M | $42,100M |",
+      "text": "Profitability improved driven by higher net interest income.",
+      "question": "Calculate ROE for 2023 and 2022. Is profitability improving?",
+      "expected_answer": "2023 ROE: 18.0%, 2022 ROE: 17.8%. Improving.",
+      "expected_steps": "2023: 8200/45600 = 18.0%; 2022: 7500/42100 = 17.8%"
+    },
+    {
+      "id": "nr_005",
+      "name": "YoY Growth by Region",
+      "table": "| Region | 2023 Revenue | 2022 Revenue |\n|--------|--------------|-------------|\n| North America | $45,200M | $42,100M |\n| Europe | $28,700M | $31,200M |\n| Asia Pacific | $18,900M | $16,400M |",
+      "text": "Asia Pacific emerged as the fastest-growing region.",
+      "question": "Which region had the highest growth rate? Calculate all three.",
+      "expected_answer": "Asia Pacific: 15.2%, North America: 7.4%, Europe: -8.0%",
+      "expected_steps": "APAC: (18900-16400)/16400 = 15.2%; NA: 7.4%; EU: -8.0%"
+    }
+  ],
+  "sentiment_analysis": [
+    {
+      "id": "sa_001",
+      "text": "Net interest income grew 12% driven by higher rates and loan growth.",
+      "expected_label": "positive",
+      "confidence_threshold": 0.85
+    },
+    {
+      "id": "sa_002",
+      "text": "Management expects headwinds from deposit competition to persist.",
+      "expected_label": "negative",
+      "confidence_threshold": 0.80
+    },
+    {
+      "id": "sa_003",
+      "text": "The company maintained its quarterly dividend of $0.50 per share.",
+      "expected_label": "neutral",
+      "confidence_threshold": 0.75
+    },
+    {
+      "id": "sa_004",
+      "text": "Credit costs increased significantly due to commercial real estate exposure.",
+      "expected_label": "negative",
+      "confidence_threshold": 0.90
+    },
+    {
+      "id": "sa_005",
+      "text": "Strong demand in core markets contributed to double-digit growth.",
+      "expected_label": "positive",
+      "confidence_threshold": 0.88
+    },
+    {
+      "id": "sa_006",
+      "text": "Total assets remained relatively unchanged from the prior quarter.",
+      "expected_label": "neutral",
+      "confidence_threshold": 0.80
+    },
+    {
+      "id": "sa_007",
+      "text": "The company lowered full-year guidance citing macroeconomic uncertainty.",
+      "expected_label": "negative",
+      "confidence_threshold": 0.90
+    },
+    {
+      "id": "sa_008",
+      "text": "Operating margins expanded 150 basis points year-over-year.",
+      "expected_label": "positive",
+      "confidence_threshold": 0.85
+    }
+  ]
+}
