@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-15 16:42:48",
+  "timestamp": "2026-03-15 16:53:33",
   "sections": {
     "bert_110m_sentiment": {
       "title": "BERT 110M -- Sentiment Classification",
@@ -920,31 +920,31 @@
       },
       "summary": {
         "base": {
-          "accuracy": 16.7,
-          "correct": 1,
-          "total": 6,
-          "avg_latency_ms": 46591.0,
+          "accuracy": 25.0,
+          "correct": 2,
+          "total": 8,
+          "avg_latency_ms": 46788.0,
           "avg_confidence": null
         },
         "finetuned": {
-          "accuracy": 16.7,
-          "correct": 1,
-          "total": 6,
-          "avg_latency_ms": 46707.7,
+          "accuracy": 25.0,
+          "correct": 2,
+          "total": 8,
+          "avg_latency_ms": 48130.6,
           "avg_confidence": null
         },
         "rag": {
-          "accuracy": 16.7,
+          "accuracy": 12.5,
           "correct": 1,
-          "total": 6,
-          "avg_latency_ms": 123972.9,
+          "total": 8,
+          "avg_latency_ms": 117606.5,
           "avg_confidence": null
         },
         "hybrid": {
-          "accuracy": 33.3,
+          "accuracy": 25.0,
           "correct": 2,
-          "total": 6,
-          "avg_latency_ms": 133682.1,
+          "total": 8,
+          "avg_latency_ms": 131612.4,
           "avg_confidence": null
         },
         "category_efficiency": {
@@ -955,11 +955,11 @@
           "hybrid_accuracy": 0.0
         },
         "category_leverage": {
-          "total": 1,
-          "base_accuracy": 100.0,
-          "finetuned_accuracy": 100.0,
-          "rag_accuracy": 100.0,
-          "hybrid_accuracy": 100.0
+          "total": 2,
+          "base_accuracy": 50.0,
+          "finetuned_accuracy": 50.0,
+          "rag_accuracy": 50.0,
+          "hybrid_accuracy": 50.0
         },
         "category_liquidity": {
           "total": 2,
@@ -972,6 +972,13 @@
           "total": 2,
           "base_accuracy": 0.0,
           "finetuned_accuracy": 0.0,
+          "rag_accuracy": 0.0,
+          "hybrid_accuracy": 0.0
+        },
+        "category_shareholder": {
+          "total": 1,
+          "base_accuracy": 100.0,
+          "finetuned_accuracy": 100.0,
           "rag_accuracy": 0.0,
           "hybrid_accuracy": 0.0
         }
@@ -1108,6 +1115,50 @@
           "hybrid_extracted": "15.0",
           "hybrid_correct": false,
           "hybrid_latency_ms": 211006.1
+        },
+        {
+          "id": "fr07",
+          "question": "Calculate the sustainable growth rate: SGR = ROE x (1 - Payout Ratio). First compute ROE (Net Income / Equity) and the payout ratio (Dividends / Net Income), then combine them.",
+          "expected": "12.59",
+          "category": "shareholder",
+          "base_answer": "\nTo calculate the sustainable growth rate (SGR), we need to use the formula: SGR = ROE x (1 - Payout Ratio).\n\nFirst, let's compute the net income and shareholders' equity:\n\nNet Income = $8,200M\nShareholders' Equity = $45,600M\n\nNext, we can calculate the return on equity (ROE):\n\nROE = Net Income / Shareholders' Equity = $8,200M / $45,600M = 0.177\n\nNow, let's compute the payout ratio:\n\nPayout Ratio = Dividends Paid / Net Income = $2,460M / $8,200M = 0.307\n\nFinally, we can combine these values to c",
+          "base_extracted": "12.5",
+          "base_correct": true,
+          "base_latency_ms": 42058.7,
+          "finetuned_answer": "\nTo calculate the sustainable growth rate (SGR), we need to use the formula: SGR = ROE x (1 - Payout Ratio).\n\nFirst, let's compute the net income and shareholders' equity:\n\nNet Income = $8,200M\nShareholders' Equity = $45,600M\n\nNext, we can calculate the ROE (Return on Equity) by dividing the net income by the shareholders' equity:\n\nROE = Net Income / Shareholders' Equity = $8,200M / $45,600M = 0.18\n\nNow, let's compute the payout ratio:\n\nPayout Ratio = Dividends Paid / Net Income = $2,460M / $8,2",
+          "finetuned_extracted": "12",
+          "finetuned_correct": true,
+          "finetuned_latency_ms": 47467.2,
+          "rag_answer": "To calculate the sustainable growth rate, we need to first compute the return on equity (ROE) and the payout ratio.\n\n1. Return on Equity (ROE):\nNet Income ($8,200M) / Shareholders' Equity ($45,600M) = 0.177 or 17.7%\n2. Payout Ratio:\nDividends Paid ($2,460M) / Net Income ($8,200M) = 0.307 or 30.7%\n\nNow we can calculate the sustainable growth rate using the formula:\nSGR = ROE x (1 - Payout Ratio)\n= 0.177 x (1 - 0.307) = 0.129 or 12.9%\n\nTherefore, the sustainable growth rate for this company is app",
+          "rag_extracted": "17.7",
+          "rag_correct": false,
+          "rag_latency_ms": 88440.0,
+          "hybrid_answer": "To calculate the sustainable growth rate, we need to calculate the ROE (Return on Equity) and the payout ratio first. Then, we can use the formula: SGR = ROE x (1 - Payout Ratio).\n\nStep 1: Calculate ROE\n\nFrom the retrieved documents, we know that Net Income in 2023 was $8,200M and Shareholders' Equity (average) was $45,600M. Therefore, we can calculate the ROE as follows:\n\nROE = Net Income / Shareholders' Equity (avg)\n= $8,200M / $45,600M\n= 0.18 or 18%\n\nStep 2: Calculate Payout Ratio\n\nFrom the r",
+          "hybrid_extracted": "18",
+          "hybrid_correct": false,
+          "hybrid_latency_ms": 115870.5
+        },
+        {
+          "id": "fr08",
+          "question": "Calculate the interest coverage ratio (EBIT/Interest) and the debt-to-equity ratio (Debt/Equity) for both years. What is the percentage improvement in the interest coverage ratio from 2022 to 2023?",
+          "expected": "21.74",
+          "category": "leverage",
+          "base_answer": "\nTo calculate the interest coverage ratio, we need to divide EBIT by Interest Expense:\n\nInterest Coverage Ratio = EBIT / Interest Expense\n\nFor 2023:\nInterest Coverage Ratio = $15,200M / $3,800M = 4.0\n\nFor 2022:\nInterest Coverage Ratio = $13,800M / $4,200M = 3.3\n\nThe percentage improvement in the interest coverage ratio from 2022 to 2023 is:\n(4.0 - 3.3) x 100% = 21%\n\nTo calculate the debt-to-equity ratio, we need to divide Total Debt by Shareholders' Equity:\n\nDebt-to-Equity Ratio = Total Debt / S",
+          "base_extracted": "100",
+          "base_correct": false,
+          "base_latency_ms": 52699.6,
+          "finetuned_answer": "\nTo calculate the interest coverage ratio (ICR) and the debt-to-equity ratio (DER), we need to use the financial data provided:\n\nInterest Coverage Ratio (EBIT/Interest):\n\n* 2023: EBIT = $15,200M, Interest Expense = $3,800M, ICR = $15,200M / $3,800M = 4.0\n* 2022: EBIT = $13,800M, Interest Expense = $4,200M, ICR = $13,800M / $4,200M = 3.2\n\nDebt-to-Equity Ratio (Debt/Equity):\n\n* 2023: Debt = $67,800M, Equity = $47,400M, DEER = $67,800M / $47,400M = 1.4\n* 2022: Debt = $72,300M, Equity = $43,800M, DE",
+          "finetuned_extracted": "4.7",
+          "finetuned_correct": false,
+          "finetuned_latency_ms": 57331.6,
+          "rag_answer": "To calculate the interest coverage ratio (ICR), we need to divide EBIT by interest expense:\n\nICR = EBIT / Interest Expense\n\nUsing the data provided in the question, we get:\n\nICR = $15,200M / $3,800M = 4.0x (or 400%) in 2023 and ICR = $13,800M / $4,200M = 3.3x (or 330%) in 2022.\n\nTo calculate the debt-to-equity ratio (DER), we need to divide total debt by shareholders' equity:\n\nDER = Total Debt / Shareholders' Equity\n\nUsing the data provided in the question, we get:\n\nDER = $67,800M / $47,400M = 1",
+          "rag_extracted": "400",
+          "rag_correct": false,
+          "rag_latency_ms": 108574.3,
+          "hybrid_answer": "To calculate the interest coverage ratio (EBIT/Interest) and the debt-to-equity ratio (Debt/Equity) for both years, we need to retrieve the necessary data from the given table:\n\nYear 2023:\n\n* EBIT: $15,200M\n* Interest Expense: $3,800M\n* Total Debt: $67,800M\n* Shareholders' Equity: $47,400M\n\nYear 2022:\n\n* EBIT: $13,800M\n* Interest Expense: $4,200M\n* Total Debt: $72,300M\n* Shareholders' Equity: $43,800M\n\nNow, let's calculate the interest coverage ratio (EBIT/Interest) for both years:\n\nYear 2023: E",
+          "hybrid_extracted": "27",
+          "hybrid_correct": false,
+          "hybrid_latency_ms": 134936.3
         }
       ]
     }
