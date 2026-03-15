@@ -5,11 +5,19 @@ LABEL description="Fine-Tuning vs RAG: Live Demo with FinBERT, Ollama, and real 
 
 WORKDIR /app
 
-# System deps + Ollama CLI (needed for reliable LoRA adapter import)
+# System deps
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl && \
-    rm -rf /var/lib/apt/lists/* && \
-    curl -fsSL https://ollama.com/install.sh | sh || true
+    rm -rf /var/lib/apt/lists/*
+
+# Ollama CLI binary (needed for reliable LoRA adapter import)
+# v0.5.13 uses .tgz; works on both amd64 (WSL) and arm64 (macOS Apple Silicon)
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then ARCH="arm64"; else ARCH="amd64"; fi && \
+    curl -fsSL -L "https://github.com/ollama/ollama/releases/download/v0.5.13/ollama-linux-${ARCH}.tgz" \
+        -o /tmp/ollama.tgz && \
+    tar -xzf /tmp/ollama.tgz -C /usr && \
+    rm /tmp/ollama.tgz
 
 # Install PyTorch CPU-only (smaller than GPU version)
 RUN pip install --no-cache-dir \
