@@ -17,24 +17,24 @@ with tab1:
 
     st.markdown("""
     ```
-    ┌─────────────────────────────────────────────────────────────┐
+    ┌──────────────────────────────────────────────────────────────┐
     │                    FINE-TUNED APPROACH                       │
-    ├─────────────────────────────────────────────────────────────┤
+    ├──────────────────────────────────────────────────────────────┤
     │                                                              │
     │  Input: Table + Text + Question                              │
     │         ↓                                                    │
-    │  ┌─────────────────────────────────────────────┐            │
+    │  ┌──────────────────────────────────────────────┐            │
     │  │           FinQA-7B-Instruct                  │            │
-    │  │  (Pre-trained on 8,281 financial Q&A pairs) │            │
+    │  │  (Pre-trained on 8,281 financial Q&A pairs)  │            │
     │  │                                              │            │
-    │  │  • Learned numerical reasoning              │            │
-    │  │  • Understands financial tables             │            │
-    │  │  • Can perform calculations                 │            │
-    │  └─────────────────────────────────────────────┘            │
+    │  │  • Learned numerical reasoning               │            │
+    │  │  • Understands financial tables              │            │
+    │  │  • Can perform calculations                  │            │
+    │  └──────────────────────────────────────────────┘            │
     │         ↓                                                    │
     │  Output: Step-by-step reasoning + Answer                     │
     │                                                              │
-    └─────────────────────────────────────────────────────────────┘
+    └──────────────────────────────────────────────────────────────┘
     ```
 
     **Key Characteristics:**
@@ -54,29 +54,29 @@ with tab2:
     st.markdown("""
     ```
     ┌─────────────────────────────────────────────────────────────┐
-    │                      RAG APPROACH                            │
+    │                      RAG APPROACH                           │
     ├─────────────────────────────────────────────────────────────┤
-    │                                                              │
-    │  Input: Question                                             │
-    │         ↓                                                    │
+    │                                                             │
+    │  Input: Question                                            │
+    │         ↓                                                   │
     │  ┌─────────────────────┐                                    │
     │  │   Embedding Model   │  (all-MiniLM-L6-v2)                │
     │  └─────────────────────┘                                    │
-    │         ↓                                                    │
+    │         ↓                                                   │
     │  ┌─────────────────────┐                                    │
     │  │    Vector Store     │  (ChromaDB)                        │
-    │  │  ┌───┐ ┌───┐ ┌───┐ │  100+ SEC filing chunks            │
-    │  │  │ • │ │ • │ │ • │ │                                     │
-    │  │  └───┘ └───┘ └───┘ │                                     │
+    │  │  ┌───┐ ┌───┐ ┌───┐  │  100+ SEC filing chunks            │
+    │  │  │ • │ │ • │ │ • │  │                                    │
+    │  │  └───┘ └───┘ └───┘  │                                    │
     │  └─────────────────────┘                                    │
-    │         ↓ (Top-K similar docs)                               │
+    │         ↓ (Top-K similar docs)                              │
     │  ┌─────────────────────┐                                    │
     │  │   Mistral-7B-Inst   │  General-purpose LLM               │
-    │  │   + Retrieved Docs  │                                     │
+    │  │   + Retrieved Docs  │                                    │
     │  └─────────────────────┘                                    │
-    │         ↓                                                    │
-    │  Output: Generated answer (may struggle with math)           │
-    │                                                              │
+    │         ↓                                                   │
+    │  Output: Generated answer (may struggle with math)          │
+    │                                                             │
     └─────────────────────────────────────────────────────────────┘
     ```
 
@@ -98,12 +98,12 @@ with tab3:
     st.markdown("""
     ```
     ┌─────────────────────────────────────────────────────────────┐
-    │                     HYBRID APPROACH                          │
-    │              (Best of Both Worlds)                           │
+    │                     HYBRID APPROACH                         │
+    │              (Best of Both Worlds)                          │
     ├─────────────────────────────────────────────────────────────┤
-    │                                                              │
-    │  Input: Table + Text + Question                              │
-    │         ↓                          ↓                         │
+    │                                                             │
+    │  Input: Table + Text + Question                             │
+    │         ↓                          ↓                        │
     │  ┌─────────────────────┐   ┌─────────────────────┐          │
     │  │   Embedding Model   │   │  Primary Context    │          │
     │  └─────────────────────┘   │  (Table + Text)     │          │
@@ -112,20 +112,20 @@ with tab3:
     │  │    Vector Store     │            │                       │
     │  │  (Retrieved Docs)   │            │                       │
     │  └─────────────────────┘            │                       │
-    │         ↓                           ↓                        │
+    │         ↓                           ↓                       │
     │         └───────────┬───────────────┘                       │
-    │                     ↓                                        │
-    │  ┌─────────────────────────────────────────────┐            │
-    │  │           FinQA-7B-Instruct                  │            │
-    │  │   + Primary Data + Retrieved Context        │            │
-    │  │                                              │            │
-    │  │  • Domain expertise from fine-tuning        │            │
-    │  │  • Fresh context from retrieval             │            │
-    │  │  • Can perform calculations                 │            │
-    │  └─────────────────────────────────────────────┘            │
-    │         ↓                                                    │
-    │  Output: Enriched reasoning + Accurate answer                │
-    │                                                              │
+    │                     ↓                                       │
+    │  ┌──────────────────────────────────────────────┐           │
+    │  │           FinQA-7B-Instruct                  │           │
+    │  │   + Primary Data + Retrieved Context         │           │
+    │  │                                              │           │
+    │  │  • Domain expertise from fine-tuning         │           │
+    │  │  • Fresh context from retrieval              │           │
+    │  │  • Can perform calculations                  │           │
+    │  └──────────────────────────────────────────────┘           │
+    │         ↓                                                   │
+    │  Output: Enriched reasoning + Accurate answer               │
+    │                                                             │
     └─────────────────────────────────────────────────────────────┘
     ```
 
