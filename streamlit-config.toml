@@ -8,6 +8,9 @@ enableXsrfProtection = false
 [browser]
 gatherUsageStats = false
 
+[client]
+appName = "finetune-vs-rag"
+
 [theme]
 primaryColor = "#0066cc"
 backgroundColor = "#ffffff"

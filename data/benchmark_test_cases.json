@@ -1,0 +1,74 @@
+{
+  "sentiment": [
+    {"id": "s01", "text": "Net interest income grew 12% driven by higher rates and loan growth.", "label": "positive", "category": "straightforward"},
+    {"id": "s02", "text": "Management expects headwinds from deposit competition to persist throughout 2024.", "label": "negative", "category": "domain_jargon"},
+    {"id": "s03", "text": "The company maintained its quarterly dividend of $0.50 per share.", "label": "neutral", "category": "subtle_neutral"},
+    {"id": "s04", "text": "Credit costs increased significantly due to commercial real estate exposure.", "label": "negative", "category": "domain_specific"},
+    {"id": "s05", "text": "Strong demand in core markets contributed to double-digit revenue growth.", "label": "positive", "category": "straightforward"},
+    {"id": "s06", "text": "Total assets remained relatively unchanged from the prior quarter.", "label": "neutral", "category": "subtle_neutral"},
+    {"id": "s07", "text": "The restructuring program resulted in $450M of one-time charges.", "label": "negative", "category": "domain_specific"},
+    {"id": "s08", "text": "Operating efficiency improved with the cost-to-income ratio declining to 52%.", "label": "positive", "category": "tricky_positive"},
+    {"id": "s09", "text": "Provisions for loan losses rose sharply amid deteriorating credit quality.", "label": "negative", "category": "domain_jargon"},
+    {"id": "s10", "text": "The board approved a routine extension of the existing credit facility.", "label": "neutral", "category": "subtle_neutral"},
+    {"id": "s11", "text": "Revenue exceeded analyst consensus estimates by approximately 8%.", "label": "positive", "category": "straightforward"},
+    {"id": "s12", "text": "Non-performing loans increased to 1.2% of total loans from 0.9% a year ago.", "label": "negative", "category": "domain_specific"},
+    {"id": "s13", "text": "The company filed its annual 10-K report with the SEC on schedule.", "label": "neutral", "category": "subtle_neutral"},
+    {"id": "s14", "text": "Margin compression accelerated due to competitive deposit pricing pressures.", "label": "negative", "category": "domain_jargon"},
+    {"id": "s15", "text": "Customer acquisition reached record levels with 2.3 million new accounts.", "label": "positive", "category": "straightforward"},
+    {"id": "s16", "text": "The bank warned of material weakness in internal controls over financial reporting.", "label": "negative", "category": "domain_specific"},
+    {"id": "s17", "text": "Staffing levels were unchanged from last quarter at approximately 198,000 employees.", "label": "neutral", "category": "subtle_neutral"},
+    {"id": "s18", "text": "Fee income declined 15% year-over-year due to reduced trading activity.", "label": "negative", "category": "straightforward"},
+    {"id": "s19", "text": "Return on tangible common equity improved to 18.2% from 16.9% in the prior year.", "label": "positive", "category": "domain_specific"},
+    {"id": "s20", "text": "The acquisition is expected to be modestly dilutive to earnings in the first year before becoming accretive.", "label": "neutral", "category": "tricky_mixed"}
+  ],
+  "striking_examples": {
+    "finetuning_wins": [
+      {
+        "id": "fw01",
+        "text": "Management expects headwinds from deposit competition to persist throughout 2024.",
+        "label": "negative",
+        "why": "The word 'headwinds' is financial jargon meaning challenges/obstacles. A generic model or RAG may not know this unless it retrieves a definition. FinBERT learned during training that 'headwinds' signals negative sentiment."
+      },
+      {
+        "id": "fw02",
+        "text": "Margin compression accelerated due to competitive deposit pricing pressures.",
+        "label": "negative",
+        "why": "'Margin compression' and 'pricing pressures' are domain-specific negative terms. No single retrieved document would teach a model to interpret this combination. FinBERT learned this pattern from thousands of similar financial sentences."
+      },
+      {
+        "id": "fw03",
+        "text": "Operating efficiency improved with the cost-to-income ratio declining to 52%.",
+        "label": "positive",
+        "why": "The word 'declining' normally sounds negative, but a DECLINING cost-to-income ratio is POSITIVE (costs are going down relative to revenue). FinBERT learned this domain-specific inversion during training. RAG and base models often get confused by 'declining'."
+      },
+      {
+        "id": "fw04",
+        "text": "The restructuring program resulted in $450M of one-time charges.",
+        "label": "negative",
+        "why": "'Restructuring' and 'charges' are negative in finance even though 'program' sounds neutral. RAG might retrieve examples about programs (neutral) rather than charges (negative). FinBERT understands the full phrase."
+      }
+    ],
+    "rag_wins": [
+      {
+        "id": "rw01",
+        "question": "What is Meridian National Bancorp's CET1 capital ratio and how does it compare to regulatory minimums?",
+        "why": "This requires specific factual knowledge about a company that is NOT in any model's training data. RAG retrieves the actual document containing CET1 = 13.2% and the regulatory minimum of 4.5%. Without RAG, any model would have to hallucinate or refuse to answer.",
+        "expected_context": "capital_ratios_2023.txt"
+      },
+      {
+        "id": "rw02",
+        "question": "What drove the decline in investment banking revenue according to the latest annual report?",
+        "why": "The answer is in a specific document (investment_banking_review.txt). A fine-tuned model has no access to this document. RAG retrieves it and provides the factual answer.",
+        "expected_context": "investment_banking_review.txt"
+      }
+    ],
+    "hybrid_wins": [
+      {
+        "id": "hw01",
+        "question": "Based on the annual report data, calculate the year-over-year change in the efficiency ratio and explain what drove it.",
+        "why": "This needs BOTH retrieval (to get the actual efficiency ratio numbers from the document) AND numerical reasoning (to calculate the change). Base RAG retrieves the data but struggles with the calculation. A fine-tuned model can calculate but doesn't have the data. Hybrid does both.",
+        "expected_context": "operating_efficiency_2023.txt"
+      }
+    ]
+  }
+}

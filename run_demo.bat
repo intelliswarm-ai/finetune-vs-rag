@@ -35,6 +35,6 @@ if not exist ".env" (
 echo Starting Streamlit app...
 echo Open http://localhost:8501 in your browser
 echo.
-streamlit run app/app.py --server.headless true
+streamlit run app/finetune_vs_rag.py --server.headless true
 
 pause

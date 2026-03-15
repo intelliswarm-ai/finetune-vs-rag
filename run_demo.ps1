@@ -39,4 +39,4 @@ if (-not (Test-Path ".env")) {
 Write-Host "Starting Streamlit app..." -ForegroundColor Green
 Write-Host "Open http://localhost:8501 in your browser" -ForegroundColor Green
 Write-Host ""
-streamlit run app/app.py --server.headless true
+streamlit run app/finetune_vs_rag.py --server.headless true

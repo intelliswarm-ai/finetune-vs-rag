@@ -26,6 +26,13 @@ AutoTokenizer.from_pretrained('ProsusAI/finbert'); \
 AutoModelForSequenceClassification.from_pretrained('ProsusAI/finbert'); \
 print('FinBERT downloaded')"
 
+# bert-base-uncased (~440MB, same architecture as FinBERT but NOT fine-tuned)
+RUN python -c "\
+from transformers import AutoTokenizer, AutoModel; \
+AutoTokenizer.from_pretrained('bert-base-uncased'); \
+AutoModel.from_pretrained('bert-base-uncased'); \
+print('bert-base-uncased downloaded')"
+
 # sentence-transformers embedding model (~90MB)
 RUN python -c "\
 from sentence_transformers import SentenceTransformer; \

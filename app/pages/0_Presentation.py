@@ -601,14 +601,16 @@ def slide_models_used():
         st.markdown("""
         <div class="green-box">
         <strong>FinQA-7B -- Financial Numerical Reasoning</strong><br/><br/>
-        <strong>Base model:</strong> Mistral-7B-Instruct-v0.1 (7B parameters)<br/>
+        <strong>Base model:</strong> Llama2-7B (Meta, 7B parameters)<br/>
         <strong>Fine-tuned by:</strong> Community (truocpham)<br/>
         <strong>HuggingFace:</strong> <code>truocpham/FinQA-7B-Instruct-v0.1</code><br/><br/>
-        <strong>What was changed:</strong> The model was fine-tuned using QLoRA
+        <strong>What was changed:</strong> Llama2-7B was fine-tuned using QLoRA
         (4-bit quantized Low-Rank Adaptation) on the FinQA dataset to learn
         multi-step numerical reasoning over financial tables.<br/><br/>
-        <strong>Benchmark:</strong> 61.2% execution accuracy on FinQA test set
-        (vs ~15% for RAG with the same base model)
+        <strong>Apples-to-apples:</strong> In the live demo, we compare
+        FinQA-7B (Llama2-7B fine-tuned) against Llama2-7B base and
+        Llama2-7B + RAG -- same architecture, same parameter count,
+        different approach.
         </div>
         """, unsafe_allow_html=True)
 

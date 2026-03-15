@@ -19,5 +19,8 @@ chromadb>=0.4.0
 # LLM client (OpenAI-compatible, talks to Ollama)
 openai>=1.0.0
 
+# HuggingFace Hub (download FinQA-7B for fine-tuned comparison)
+huggingface-hub>=0.20.0
+
 # Utilities
 python-dotenv>=1.0.0

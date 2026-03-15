@@ -1,6 +1,6 @@
 services:
 
-  # Ollama -- runs Mistral-7B locally
+  # Ollama -- runs Llama2-7B and FinQA-7B locally
   ollama:
     image: ollama/ollama
     container_name: ollama
@@ -8,6 +8,7 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+      - shared_models:/shared_models
     restart: unless-stopped
 
   # Demo Streamlit app
@@ -23,10 +24,15 @@ services:
         required: false
     environment:
       - OLLAMA_HOST=http://ollama:11434
-      - LLM_MODEL=mistral
+      - LLM_MODEL=llama2
+      - FINETUNED_LLM_MODEL=finqa-7b
+    volumes:
+      - ./data:/app/data
+      - shared_models:/shared_models
     depends_on:
       - ollama
     restart: unless-stopped
 
 volumes:
   ollama_data:
+  shared_models:

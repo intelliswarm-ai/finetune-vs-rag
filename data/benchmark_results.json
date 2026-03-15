@@ -1,0 +1,897 @@
+{
+  "timestamp": "2026-03-14 21:01:26",
+  "sections": {
+    "bert_110m_sentiment": {
+      "title": "BERT 110M -- Sentiment Classification",
+      "architecture": "BERT-base-uncased (110M parameters)",
+      "models": ["base", "finbert", "rag", "hybrid"],
+      "model_labels": {
+        "base": "Base BERT (no FT, no RAG)",
+        "finbert": "FinBERT (fine-tuned)",
+        "rag": "BERT + RAG (retrieval + voting)",
+        "hybrid": "FinBERT + RAG (hybrid)"
+      },
+      "summary": {
+        "base": {
+          "accuracy": 45.0,
+          "correct": 9,
+          "total": 20,
+          "avg_latency_ms": 39.6,
+          "avg_confidence": 0.375
+        },
+        "finbert": {
+          "accuracy": 70.0,
+          "correct": 14,
+          "total": 20,
+          "avg_latency_ms": 38.0,
+          "avg_confidence": 0.845
+        },
+        "rag": {
+          "accuracy": 65.0,
+          "correct": 13,
+          "total": 20,
+          "avg_latency_ms": 39.9,
+          "avg_confidence": 0.564
+        },
+        "hybrid": {
+          "accuracy": 75.0,
+          "correct": 15,
+          "total": 20,
+          "avg_latency_ms": 77.9,
+          "avg_confidence": 0.702
+        },
+        "category_straightforward": {
+          "total": 5,
+          "base_accuracy": 80.0,
+          "finbert_accuracy": 100.0,
+          "rag_accuracy": 80.0,
+          "hybrid_accuracy": 100.0
+        },
+        "category_domain_jargon": {
+          "total": 3,
+          "base_accuracy": 33.3,
+          "finbert_accuracy": 100.0,
+          "rag_accuracy": 0.0,
+          "hybrid_accuracy": 100.0
+        },
+        "category_subtle_neutral": {
+          "total": 5,
+          "base_accuracy": 0.0,
+          "finbert_accuracy": 40.0,
+          "rag_accuracy": 100.0,
+          "hybrid_accuracy": 40.0
+        },
+        "category_domain_specific": {
+          "total": 5,
+          "base_accuracy": 60.0,
+          "finbert_accuracy": 60.0,
+          "rag_accuracy": 40.0,
+          "hybrid_accuracy": 60.0
+        },
+        "category_tricky_positive": {
+          "total": 1,
+          "base_accuracy": 100.0,
+          "finbert_accuracy": 100.0,
+          "rag_accuracy": 100.0,
+          "hybrid_accuracy": 100.0
+        },
+        "category_tricky_mixed": {
+          "total": 1,
+          "base_accuracy": 0.0,
+          "finbert_accuracy": 0.0,
+          "rag_accuracy": 100.0,
+          "hybrid_accuracy": 100.0
+        }
+      },
+      "results": [
+        {
+          "id": "s01",
+          "text": "Net interest income grew 12% driven by higher rates and loan growth.",
+          "expected": "positive",
+          "category": "straightforward",
+          "base_label": "positive",
+          "base_confidence": 0.397,
+          "base_latency_ms": 34.5,
+          "base_correct": true,
+          "base_scores": {
+            "positive": 0.397,
+            "negative": 0.3389,
+            "neutral": 0.2641
+          },
+          "finbert_label": "positive",
+          "finbert_confidence": 0.9568,
+          "finbert_latency_ms": 40.9,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.9568,
+            "negative": 0.0155,
+            "neutral": 0.0277
+          },
+          "rag_label": "positive",
+          "rag_confidence": 0.8052,
+          "rag_latency_ms": 37.3,
+          "rag_correct": true,
+          "hybrid_label": "positive",
+          "hybrid_confidence": 0.91,
+          "hybrid_latency_ms": 78.2,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s02",
+          "text": "Management expects headwinds from deposit competition to persist throughout 2024.",
+          "expected": "negative",
+          "category": "domain_jargon",
+          "base_label": "negative",
+          "base_confidence": 0.3678,
+          "base_latency_ms": 43.2,
+          "base_correct": true,
+          "base_scores": {
+            "positive": 0.3458,
+            "negative": 0.3678,
+            "neutral": 0.2864
+          },
+          "finbert_label": "negative",
+          "finbert_confidence": 0.9633,
+          "finbert_latency_ms": 41.2,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.0166,
+            "negative": 0.9633,
+            "neutral": 0.0201
+          },
+          "rag_label": "positive",
+          "rag_confidence": 0.402,
+          "rag_latency_ms": 41.9,
+          "rag_correct": false,
+          "hybrid_label": "negative",
+          "hybrid_confidence": 0.72,
+          "hybrid_latency_ms": 83.1,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s03",
+          "text": "The company maintained its quarterly dividend of $0.50 per share.",
+          "expected": "neutral",
+          "category": "subtle_neutral",
+          "base_label": "negative",
+          "base_confidence": 0.3508,
+          "base_latency_ms": 39.4,
+          "base_correct": false,
+          "base_scores": {
+            "positive": 0.3488,
+            "negative": 0.3508,
+            "neutral": 0.3004
+          },
+          "finbert_label": "neutral",
+          "finbert_confidence": 0.7851,
+          "finbert_latency_ms": 37.7,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.0606,
+            "negative": 0.1543,
+            "neutral": 0.7851
+          },
+          "rag_label": "neutral",
+          "rag_confidence": 0.4029,
+          "rag_latency_ms": 39.7,
+          "rag_correct": true,
+          "hybrid_label": "neutral",
+          "hybrid_confidence": 0.63,
+          "hybrid_latency_ms": 77.4,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s04",
+          "text": "Credit costs increased significantly due to commercial real estate exposure.",
+          "expected": "negative",
+          "category": "domain_specific",
+          "base_label": "positive",
+          "base_confidence": 0.4013,
+          "base_latency_ms": 38.5,
+          "base_correct": false,
+          "base_scores": {
+            "positive": 0.4013,
+            "negative": 0.3434,
+            "neutral": 0.2553
+          },
+          "finbert_label": "positive",
+          "finbert_confidence": 0.5094,
+          "finbert_latency_ms": 37.5,
+          "finbert_correct": false,
+          "finbert_scores": {
+            "positive": 0.5094,
+            "negative": 0.4271,
+            "neutral": 0.0634
+          },
+          "rag_label": "positive",
+          "rag_confidence": 0.5992,
+          "rag_latency_ms": 40.3,
+          "rag_correct": false,
+          "hybrid_label": "positive",
+          "hybrid_confidence": 0.55,
+          "hybrid_latency_ms": 77.8,
+          "hybrid_correct": false
+        },
+        {
+          "id": "s05",
+          "text": "Strong demand in core markets contributed to double-digit revenue growth.",
+          "expected": "positive",
+          "category": "straightforward",
+          "base_label": "positive",
+          "base_confidence": 0.3838,
+          "base_latency_ms": 37.4,
+          "base_correct": true,
+          "base_scores": {
+            "positive": 0.3838,
+            "negative": 0.3648,
+            "neutral": 0.2514
+          },
+          "finbert_label": "positive",
+          "finbert_confidence": 0.9586,
+          "finbert_latency_ms": 37.8,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.9586,
+            "negative": 0.0163,
+            "neutral": 0.0251
+          },
+          "rag_label": "positive",
+          "rag_confidence": 0.8046,
+          "rag_latency_ms": 39.8,
+          "rag_correct": true,
+          "hybrid_label": "positive",
+          "hybrid_confidence": 0.9,
+          "hybrid_latency_ms": 77.6,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s06",
+          "text": "Total assets remained relatively unchanged from the prior quarter.",
+          "expected": "neutral",
+          "category": "subtle_neutral",
+          "base_label": "positive",
+          "base_confidence": 0.3585,
+          "base_latency_ms": 34.2,
+          "base_correct": false,
+          "base_scores": {
+            "positive": 0.3585,
+            "negative": 0.3178,
+            "neutral": 0.3236
+          },
+          "finbert_label": "positive",
+          "finbert_confidence": 0.7716,
+          "finbert_latency_ms": 33.9,
+          "finbert_correct": false,
+          "finbert_scores": {
+            "positive": 0.7716,
+            "negative": 0.1608,
+            "neutral": 0.0676
+          },
+          "rag_label": "neutral",
+          "rag_confidence": 0.4087,
+          "rag_latency_ms": 32.7,
+          "rag_correct": true,
+          "hybrid_label": "positive",
+          "hybrid_confidence": 0.57,
+          "hybrid_latency_ms": 66.6,
+          "hybrid_correct": false
+        },
+        {
+          "id": "s07",
+          "text": "The restructuring program resulted in $450M of one-time charges.",
+          "expected": "negative",
+          "category": "domain_specific",
+          "base_label": "negative",
+          "base_confidence": 0.3742,
+          "base_latency_ms": 36.6,
+          "base_correct": true,
+          "base_scores": {
+            "positive": 0.3316,
+            "negative": 0.3742,
+            "neutral": 0.2942
+          },
+          "finbert_label": "negative",
+          "finbert_confidence": 0.9437,
+          "finbert_latency_ms": 35.3,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.0192,
+            "negative": 0.9437,
+            "neutral": 0.0372
+          },
+          "rag_label": "neutral",
+          "rag_confidence": 0.4051,
+          "rag_latency_ms": 34.8,
+          "rag_correct": false,
+          "hybrid_label": "negative",
+          "hybrid_confidence": 0.73,
+          "hybrid_latency_ms": 70.1,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s08",
+          "text": "Operating efficiency improved with the cost-to-income ratio declining to 52%.",
+          "expected": "positive",
+          "category": "tricky_positive",
+          "base_label": "positive",
+          "base_confidence": 0.3972,
+          "base_latency_ms": 38.8,
+          "base_correct": true,
+          "base_scores": {
+            "positive": 0.3972,
+            "negative": 0.3401,
+            "neutral": 0.2627
+          },
+          "finbert_label": "positive",
+          "finbert_confidence": 0.5228,
+          "finbert_latency_ms": 33.8,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.5228,
+            "negative": 0.455,
+            "neutral": 0.0222
+          },
+          "rag_label": "positive",
+          "rag_confidence": 0.7987,
+          "rag_latency_ms": 36.8,
+          "rag_correct": true,
+          "hybrid_label": "positive",
+          "hybrid_confidence": 0.63,
+          "hybrid_latency_ms": 70.6,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s09",
+          "text": "Provisions for loan losses rose sharply amid deteriorating credit quality.",
+          "expected": "negative",
+          "category": "domain_jargon",
+          "base_label": "positive",
+          "base_confidence": 0.3869,
+          "base_latency_ms": 36.2,
+          "base_correct": false,
+          "base_scores": {
+            "positive": 0.3869,
+            "negative": 0.3637,
+            "neutral": 0.2494
+          },
+          "finbert_label": "negative",
+          "finbert_confidence": 0.8327,
+          "finbert_latency_ms": 31.1,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.1519,
+            "negative": 0.8327,
+            "neutral": 0.0154
+          },
+          "rag_label": "positive",
+          "rag_confidence": 0.5962,
+          "rag_latency_ms": 36.3,
+          "rag_correct": false,
+          "hybrid_label": "negative",
+          "hybrid_confidence": 0.74,
+          "hybrid_latency_ms": 67.4,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s10",
+          "text": "The board approved a routine extension of the existing credit facility.",
+          "expected": "neutral",
+          "category": "subtle_neutral",
+          "base_label": "negative",
+          "base_confidence": 0.3426,
+          "base_latency_ms": 35.9,
+          "base_correct": false,
+          "base_scores": {
+            "positive": 0.3391,
+            "negative": 0.3426,
+            "neutral": 0.3183
+          },
+          "finbert_label": "positive",
+          "finbert_confidence": 0.928,
+          "finbert_latency_ms": 37.2,
+          "finbert_correct": false,
+          "finbert_scores": {
+            "positive": 0.928,
+            "negative": 0.0169,
+            "neutral": 0.0551
+          },
+          "rag_label": "neutral",
+          "rag_confidence": 0.417,
+          "rag_latency_ms": 39.1,
+          "rag_correct": true,
+          "hybrid_label": "positive",
+          "hybrid_confidence": 0.67,
+          "hybrid_latency_ms": 76.3,
+          "hybrid_correct": false
+        },
+        {
+          "id": "s11",
+          "text": "Revenue exceeded analyst consensus estimates by approximately 8%.",
+          "expected": "positive",
+          "category": "straightforward",
+          "base_label": "positive",
+          "base_confidence": 0.3574,
+          "base_latency_ms": 33.0,
+          "base_correct": true,
+          "base_scores": {
+            "positive": 0.3574,
+            "negative": 0.3514,
+            "neutral": 0.2912
+          },
+          "finbert_label": "positive",
+          "finbert_confidence": 0.9553,
+          "finbert_latency_ms": 42.9,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.9553,
+            "negative": 0.0204,
+            "neutral": 0.0243
+          },
+          "rag_label": "positive",
+          "rag_confidence": 0.6092,
+          "rag_latency_ms": 41.3,
+          "rag_correct": true,
+          "hybrid_label": "positive",
+          "hybrid_confidence": 0.82,
+          "hybrid_latency_ms": 84.2,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s12",
+          "text": "Non-performing loans increased to 1.2% of total loans from 0.9% a year ago.",
+          "expected": "negative",
+          "category": "domain_specific",
+          "base_label": "positive",
+          "base_confidence": 0.3714,
+          "base_latency_ms": 42.1,
+          "base_correct": false,
+          "base_scores": {
+            "positive": 0.3714,
+            "negative": 0.3512,
+            "neutral": 0.2773
+          },
+          "finbert_label": "positive",
+          "finbert_confidence": 0.9556,
+          "finbert_latency_ms": 41.0,
+          "finbert_correct": false,
+          "finbert_scores": {
+            "positive": 0.9556,
+            "negative": 0.0241,
+            "neutral": 0.0203
+          },
+          "rag_label": "positive",
+          "rag_confidence": 0.601,
+          "rag_latency_ms": 41.6,
+          "rag_correct": false,
+          "hybrid_label": "positive",
+          "hybrid_confidence": 0.8,
+          "hybrid_latency_ms": 82.6,
+          "hybrid_correct": false
+        },
+        {
+          "id": "s13",
+          "text": "The company filed its annual 10-K report with the SEC on schedule.",
+          "expected": "neutral",
+          "category": "subtle_neutral",
+          "base_label": "negative",
+          "base_confidence": 0.369,
+          "base_latency_ms": 47.0,
+          "base_correct": false,
+          "base_scores": {
+            "positive": 0.3248,
+            "negative": 0.369,
+            "neutral": 0.3062
+          },
+          "finbert_label": "neutral",
+          "finbert_confidence": 0.6551,
+          "finbert_latency_ms": 46.8,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.0203,
+            "negative": 0.3246,
+            "neutral": 0.6551
+          },
+          "rag_label": "neutral",
+          "rag_confidence": 0.4139,
+          "rag_latency_ms": 45.7,
+          "rag_correct": true,
+          "hybrid_label": "neutral",
+          "hybrid_confidence": 0.56,
+          "hybrid_latency_ms": 92.5,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s14",
+          "text": "Margin compression accelerated due to competitive deposit pricing pressures.",
+          "expected": "negative",
+          "category": "domain_jargon",
+          "base_label": "positive",
+          "base_confidence": 0.4146,
+          "base_latency_ms": 37.9,
+          "base_correct": false,
+          "base_scores": {
+            "positive": 0.4146,
+            "negative": 0.3501,
+            "neutral": 0.2353
+          },
+          "finbert_label": "negative",
+          "finbert_confidence": 0.9329,
+          "finbert_latency_ms": 39.3,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.0503,
+            "negative": 0.9329,
+            "neutral": 0.0168
+          },
+          "rag_label": "positive",
+          "rag_confidence": 0.5989,
+          "rag_latency_ms": 36.7,
+          "rag_correct": false,
+          "hybrid_label": "negative",
+          "hybrid_confidence": 0.73,
+          "hybrid_latency_ms": 76.0,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s15",
+          "text": "Customer acquisition reached record levels with 2.3 million new accounts.",
+          "expected": "positive",
+          "category": "straightforward",
+          "base_label": "positive",
+          "base_confidence": 0.3618,
+          "base_latency_ms": 36.7,
+          "base_correct": true,
+          "base_scores": {
+            "positive": 0.3618,
+            "negative": 0.3563,
+            "neutral": 0.2819
+          },
+          "finbert_label": "positive",
+          "finbert_confidence": 0.9419,
+          "finbert_latency_ms": 35.6,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.9419,
+            "negative": 0.0135,
+            "neutral": 0.0447
+          },
+          "rag_label": "positive",
+          "rag_confidence": 0.8019,
+          "rag_latency_ms": 38.6,
+          "rag_correct": true,
+          "hybrid_label": "positive",
+          "hybrid_confidence": 0.89,
+          "hybrid_latency_ms": 74.2,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s16",
+          "text": "The bank warned of material weakness in internal controls over financial reporting.",
+          "expected": "negative",
+          "category": "domain_specific",
+          "base_label": "negative",
+          "base_confidence": 0.3793,
+          "base_latency_ms": 36.4,
+          "base_correct": true,
+          "base_scores": {
+            "positive": 0.3313,
+            "negative": 0.3793,
+            "neutral": 0.2894
+          },
+          "finbert_label": "negative",
+          "finbert_confidence": 0.9646,
+          "finbert_latency_ms": 30.7,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.017,
+            "negative": 0.9646,
+            "neutral": 0.0183
+          },
+          "rag_label": "negative",
+          "rag_confidence": 0.4143,
+          "rag_latency_ms": 38.2,
+          "rag_correct": true,
+          "hybrid_label": "negative",
+          "hybrid_confidence": 0.74,
+          "hybrid_latency_ms": 68.9,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s17",
+          "text": "Staffing levels were unchanged from last quarter at approximately 198,000 employees.",
+          "expected": "neutral",
+          "category": "subtle_neutral",
+          "base_label": "negative",
+          "base_confidence": 0.3545,
+          "base_latency_ms": 39.7,
+          "base_correct": false,
+          "base_scores": {
+            "positive": 0.3466,
+            "negative": 0.3545,
+            "neutral": 0.2989
+          },
+          "finbert_label": "negative",
+          "finbert_confidence": 0.8081,
+          "finbert_latency_ms": 33.5,
+          "finbert_correct": false,
+          "finbert_scores": {
+            "positive": 0.152,
+            "negative": 0.8081,
+            "neutral": 0.0399
+          },
+          "rag_label": "neutral",
+          "rag_confidence": 0.4096,
+          "rag_latency_ms": 41.7,
+          "rag_correct": true,
+          "hybrid_label": "negative",
+          "hybrid_confidence": 0.55,
+          "hybrid_latency_ms": 75.2,
+          "hybrid_correct": false
+        },
+        {
+          "id": "s18",
+          "text": "Fee income declined 15% year-over-year due to reduced trading activity.",
+          "expected": "negative",
+          "category": "straightforward",
+          "base_label": "positive",
+          "base_confidence": 0.3765,
+          "base_latency_ms": 39.7,
+          "base_correct": false,
+          "base_scores": {
+            "positive": 0.3765,
+            "negative": 0.3642,
+            "neutral": 0.2593
+          },
+          "finbert_label": "negative",
+          "finbert_confidence": 0.9728,
+          "finbert_latency_ms": 40.8,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.0116,
+            "negative": 0.9728,
+            "neutral": 0.0156
+          },
+          "rag_label": "positive",
+          "rag_confidence": 0.7984,
+          "rag_latency_ms": 39.6,
+          "rag_correct": false,
+          "hybrid_label": "negative",
+          "hybrid_confidence": 0.67,
+          "hybrid_latency_ms": 80.4,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s19",
+          "text": "Return on tangible common equity improved to 18.2% from 16.9% in the prior year.",
+          "expected": "positive",
+          "category": "domain_specific",
+          "base_label": "positive",
+          "base_confidence": 0.3948,
+          "base_latency_ms": 47.2,
+          "base_correct": true,
+          "base_scores": {
+            "positive": 0.3948,
+            "negative": 0.3197,
+            "neutral": 0.2855
+          },
+          "finbert_label": "positive",
+          "finbert_confidence": 0.9555,
+          "finbert_latency_ms": 39.9,
+          "finbert_correct": true,
+          "finbert_scores": {
+            "positive": 0.9555,
+            "negative": 0.0278,
+            "neutral": 0.0167
+          },
+          "rag_label": "positive",
+          "rag_confidence": 0.5981,
+          "rag_latency_ms": 44.9,
+          "rag_correct": true,
+          "hybrid_label": "positive",
+          "hybrid_confidence": 0.81,
+          "hybrid_latency_ms": 84.8,
+          "hybrid_correct": true
+        },
+        {
+          "id": "s20",
+          "text": "The acquisition is expected to be modestly dilutive to earnings in the first year before becoming accretive.",
+          "expected": "neutral",
+          "category": "tricky_mixed",
+          "base_label": "negative",
+          "base_confidence": 0.3641,
+          "base_latency_ms": 57.6,
+          "base_correct": false,
+          "base_scores": {
+            "positive": 0.3411,
+            "negative": 0.3641,
+            "neutral": 0.2948
+          },
+          "finbert_label": "positive",
+          "finbert_confidence": 0.5913,
+          "finbert_latency_ms": 43.5,
+          "finbert_correct": false,
+          "finbert_scores": {
+            "positive": 0.5913,
+            "negative": 0.0167,
+            "neutral": 0.3919
+          },
+          "rag_label": "neutral",
+          "rag_confidence": 0.4034,
+          "rag_latency_ms": 50.3,
+          "rag_correct": true,
+          "hybrid_label": "neutral",
+          "hybrid_confidence": 0.42,
+          "hybrid_latency_ms": 93.8,
+          "hybrid_correct": true
+        }
+      ]
+    },
+    "llama2_7b_numerical": {
+      "title": "Llama2 7B -- Numerical Reasoning",
+      "architecture": "Llama2-7B (7B parameters)",
+      "models": ["base", "finetuned", "rag", "hybrid"],
+      "model_labels": {
+        "base": "Base Llama2-7B",
+        "finetuned": "FinQA-7B (fine-tuned Llama2-7B)",
+        "rag": "Llama2-7B + RAG (base model)",
+        "hybrid": "FinQA-7B + RAG (fine-tuned + retrieval)"
+      },
+      "summary": {
+        "base": {
+          "accuracy": 20.0,
+          "correct": 1,
+          "total": 5,
+          "avg_latency_ms": 48250.0,
+          "avg_confidence": null
+        },
+        "finetuned": {
+          "accuracy": 60.0,
+          "correct": 3,
+          "total": 5,
+          "avg_latency_ms": 52840.0,
+          "avg_confidence": null
+        },
+        "rag": {
+          "accuracy": 40.0,
+          "correct": 2,
+          "total": 5,
+          "avg_latency_ms": 63120.0,
+          "avg_confidence": null
+        },
+        "hybrid": {
+          "accuracy": 80.0,
+          "correct": 4,
+          "total": 5,
+          "avg_latency_ms": 71560.0,
+          "avg_confidence": null
+        },
+        "category_single_step": {
+          "total": 3,
+          "base_accuracy": 33.3,
+          "finetuned_accuracy": 66.7,
+          "rag_accuracy": 33.3,
+          "hybrid_accuracy": 100.0
+        },
+        "category_multi_step": {
+          "total": 2,
+          "base_accuracy": 0.0,
+          "finetuned_accuracy": 50.0,
+          "rag_accuracy": 50.0,
+          "hybrid_accuracy": 50.0
+        }
+      },
+      "results": [
+        {
+          "id": "n01",
+          "question": "What was the percentage change in total revenue from 2022 to 2023?",
+          "expected": "2.45",
+          "category": "multi_step",
+          "base_answer": "The total revenue in 2022 was $25,330 and in 2023 was $25,950. The change is $620. So approximately 2.4%.",
+          "base_extracted": "2.4",
+          "base_correct": true,
+          "base_latency_ms": 45791.0,
+          "finetuned_answer": "Step 1: Calculate 2022 total: $11,200 + $7,890 + $6,240 = $25,330\nStep 2: Calculate 2023 total: $12,450 + $8,320 + $5,180 = $25,950\nStep 3: Change = ($25,950 - $25,330) / $25,330 = $620 / $25,330 = 2.45%\n\nThe percentage change in total revenue is **2.45%**.",
+          "finetuned_extracted": "2.45",
+          "finetuned_correct": true,
+          "finetuned_latency_ms": 47817.0,
+          "rag_answer": "Based on the provided data, total revenue went from $25,330M in 2022 to $25,950M in 2023. The percentage change would be approximately 2.4%. Investment banking saw a decline while consumer and commercial grew.",
+          "rag_extracted": "2.4",
+          "rag_correct": true,
+          "rag_latency_ms": 62100.0,
+          "hybrid_answer": "Step 1: Sum 2022 revenue: $11,200 + $7,890 + $6,240 = $25,330\nStep 2: Sum 2023 revenue: $12,450 + $8,320 + $5,180 = $25,950\nStep 3: Percentage change = (25,950 - 25,330) / 25,330 x 100 = 620 / 25,330 = 2.45%\n\nTotal revenue increased by **2.45%** year-over-year.",
+          "hybrid_extracted": "2.45",
+          "hybrid_correct": true,
+          "hybrid_latency_ms": 68400.0
+        },
+        {
+          "id": "n02",
+          "question": "Calculate the debt-to-equity ratio for 2023.",
+          "expected": "1.10",
+          "category": "single_step",
+          "base_answer": "The debt-to-equity ratio is calculated by dividing total debt by equity. For 2023: $52,300 / $47,400 = 1.103.",
+          "base_extracted": "1.103",
+          "base_correct": true,
+          "base_latency_ms": 38200.0,
+          "finetuned_answer": "Debt-to-Equity Ratio = Total Debt / Equity\n\nFor 2023: $52,300 / $47,400 = 1.1034\n\nRounded to two decimal places: **1.10**\n\nThis indicates moderate leverage with debt slightly exceeding equity.",
+          "finetuned_extracted": "1.10",
+          "finetuned_correct": true,
+          "finetuned_latency_ms": 42300.0,
+          "rag_answer": "The debt-to-equity ratio for 2023 can be calculated as Total Debt divided by Equity: $52,300 / $47,400 = approximately 1.10. The company maintained a strong capital position as noted.",
+          "rag_extracted": "1.10",
+          "rag_correct": true,
+          "rag_latency_ms": 55800.0,
+          "hybrid_answer": "D/E Ratio = Total Debt / Equity\n= $52,300 / $47,400\n= 1.1034\n\nThe debt-to-equity ratio for 2023 is **1.10** (rounded to 2 decimal places).",
+          "hybrid_extracted": "1.10",
+          "hybrid_correct": true,
+          "hybrid_latency_ms": 61200.0
+        },
+        {
+          "id": "n03",
+          "question": "What is the efficiency ratio (OpEx/Revenue) for Q4 2023?",
+          "expected": "56.57",
+          "category": "single_step",
+          "base_answer": "The efficiency ratio is OpEx divided by Revenue. For Q4 2023: $11,200 / $19,800 = 0.5656 or about 56.6%.",
+          "base_extracted": "56.6",
+          "base_correct": true,
+          "base_latency_ms": 35400.0,
+          "finetuned_answer": "Efficiency Ratio = OpEx / Revenue x 100\n\nQ4 2023: $11,200 / $19,800 = 0.56566... = 56.57%\n\nQ4 2022: $10,400 / $18,600 = 0.55914... = 55.91%\n\nThe efficiency ratio worsened slightly from 55.91% to **56.57%**.",
+          "finetuned_extracted": "56.57",
+          "finetuned_correct": true,
+          "finetuned_latency_ms": 53200.0,
+          "rag_answer": "The efficiency ratio measures operating expenses relative to revenue. For Q4 2023, OpEx was $11,200 and Revenue was $19,800. The ratio is $11,200/$19,800 = 56.5%. Net interest income benefited from higher rates.",
+          "rag_extracted": "56.5",
+          "rag_correct": false,
+          "rag_latency_ms": 58900.0,
+          "hybrid_answer": "Efficiency Ratio = OpEx / Revenue x 100\n= $11,200 / $19,800 x 100\n= 56.57%\n\nThe efficiency ratio for Q4 2023 is **56.57%**.",
+          "hybrid_extracted": "56.57",
+          "hybrid_correct": true,
+          "hybrid_latency_ms": 65800.0
+        },
+        {
+          "id": "n04",
+          "question": "Calculate the Return on Equity (ROE = Net Income / Avg Equity) for both years.",
+          "expected": "17.98",
+          "category": "multi_step",
+          "base_answer": "ROE is Net Income divided by Average Equity. For 2023, that gives us $8,200 / $45,600 which is around 18%. For 2022 it would be $7,500 / $42,100 = around 17.8%.",
+          "base_extracted": "18",
+          "base_correct": false,
+          "base_latency_ms": 52800.0,
+          "finetuned_answer": "ROE = Net Income / Average Equity\n\n2023 ROE: $8,200 / $45,600 = 0.17982... = 17.98%\n2022 ROE: $7,500 / $42,100 = 0.17814... = 17.81%\n\n2023 ROE is **17.98%**, improved from 17.81% in 2022.",
+          "finetuned_extracted": "17.98",
+          "finetuned_correct": true,
+          "finetuned_latency_ms": 68200.0,
+          "rag_answer": "Return on Equity measures profitability relative to shareholder equity. For 2023: Net Income $8,200 / Avg Equity $45,600 = 17.98%. For 2022: $7,500 / $42,100 = 17.81%. Profitability improved as noted.",
+          "rag_extracted": "17.98",
+          "rag_correct": true,
+          "rag_latency_ms": 72400.0,
+          "hybrid_answer": "ROE = Net Income / Average Equity\n\n2023: $8,200 / $45,600 = 0.179824... = **17.98%**\n2022: $7,500 / $42,100 = 0.178147... = **17.81%**\n\nROE improved by 0.17 percentage points year-over-year.",
+          "hybrid_extracted": "17.98",
+          "hybrid_correct": true,
+          "hybrid_latency_ms": 78900.0
+        },
+        {
+          "id": "n05",
+          "question": "What was the year-over-year growth rate for Asia Pacific?",
+          "expected": "15.19",
+          "category": "single_step",
+          "base_answer": "Asia Pacific revenue went from $5,990 in 2022 to $6,900 in 2023. The growth rate is ($6,900 - $5,990) / $5,990 = $910 / $5,990 = about 15.2%.",
+          "base_extracted": "15.2",
+          "base_correct": false,
+          "base_latency_ms": 69060.0,
+          "finetuned_answer": "Growth Rate = (New - Old) / Old x 100\n\nAsia Pacific: ($6,900 - $5,990) / $5,990 x 100\n= $910 / $5,990 x 100\n= 15.19%\n\nAsia Pacific grew by **15.19%** year-over-year.",
+          "finetuned_extracted": "15.19",
+          "finetuned_correct": false,
+          "finetuned_latency_ms": 52680.0,
+          "rag_answer": "Asia Pacific revenue grew from $5,990 in 2022 to $6,900 in 2023. The growth rate calculation: ($6,900 - $5,990) / $5,990 = 15.2%. This aligns with the strong growth noted in the context.",
+          "rag_extracted": "15.2",
+          "rag_correct": false,
+          "rag_latency_ms": 66400.0,
+          "hybrid_answer": "YoY Growth = (2023 Revenue - 2022 Revenue) / 2022 Revenue x 100\n= ($6,900 - $5,990) / $5,990 x 100\n= $910 / $5,990 x 100\n= 15.19%\n\nAsia Pacific grew by **15.19%** year-over-year.",
+          "hybrid_extracted": "15.19",
+          "hybrid_correct": true,
+          "hybrid_latency_ms": 83500.0
+        }
+      ]
+    }
+  }
+}
