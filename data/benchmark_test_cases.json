@@ -70,5 +70,71 @@
         "expected_context": "operating_efficiency_2023.txt"
       }
     ]
-  }
+  },
+  "financial_ratios": [
+    {
+      "id": "fr01",
+      "question": "Decompose the Return on Equity using the 3-component DuPont formula: ROE = (Net Income/Revenue) x (Revenue/Total Assets) x (Total Assets/Equity). What is the ROE percentage?",
+      "table": "| Item | 2023 |\n|---|---|\n| Net Income | $8,200M |\n| Revenue | $56,300M |\n| Total Assets (avg) | $187,600M |\n| Shareholders' Equity (avg) | $45,600M |",
+      "context": "Analysts use the DuPont framework to decompose return on equity into profitability, efficiency, and leverage components.",
+      "expected": "17.98",
+      "category": "profitability"
+    },
+    {
+      "id": "fr02",
+      "question": "Calculate the 3-year Compound Annual Growth Rate (CAGR) of revenue from 2020 to 2023. CAGR = (End/Start)^(1/n) - 1.",
+      "table": "| Item | 2023 | 2020 |\n|---|---|---|\n| Revenue | $56,300M | $42,100M |",
+      "context": "The company achieved consistent revenue growth over the three-year period from 2020 to 2023.",
+      "expected": "10.17",
+      "category": "efficiency"
+    },
+    {
+      "id": "fr03",
+      "question": "Calculate the working capital for both quarters, then compute the percentage change in working capital from Q3 to Q4.",
+      "table": "| Item | Q4 2023 | Q3 2023 |\n|---|---|---|\n| Current Assets | $125,400M | $118,200M |\n| Current Liabilities | $89,500M | $92,100M |",
+      "context": "The bank improved its short-term liquidity position in Q4 through asset growth and liability reduction.",
+      "expected": "37.55",
+      "category": "liquidity"
+    },
+    {
+      "id": "fr04",
+      "question": "Calculate the debt-to-equity ratio by first summing all debt components and all equity components, then dividing total debt by total equity.",
+      "table": "| Item | 2023 |\n|---|---|\n| Short-term Debt | $12,400M |\n| Long-term Debt | $55,400M |\n| Common Stock | $18,200M |\n| Additional Paid-in Capital | $9,800M |\n| Retained Earnings | $19,400M |",
+      "context": "The company's capital structure includes multiple debt and equity components.",
+      "expected": "1.43",
+      "category": "leverage"
+    },
+    {
+      "id": "fr05",
+      "question": "Calculate the operating cash flow ratio. First compute Operating Cash Flow = Net Income + D&A - Increase in AR + Increase in AP. Then divide by Current Liabilities.",
+      "table": "| Item | 2023 |\n|---|---|\n| Net Income | $8,200M |\n| Depreciation & Amortization | $3,400M |\n| Increase in Accounts Receivable | $1,200M |\n| Increase in Accounts Payable | $800M |\n| Current Liabilities | $89,500M |",
+      "context": "Operating cash flow adjusts net income for non-cash items and working capital changes.",
+      "expected": "12.51",
+      "category": "liquidity"
+    },
+    {
+      "id": "fr06",
+      "question": "Calculate the gross margin, operating margin, and net profit margin. Then compute the spread between gross margin and net margin (gross margin minus net margin) in percentage points.",
+      "table": "| Item | 2023 |\n|---|---|\n| Revenue | $56,300M |\n| Cost of Goods Sold | $33,780M |\n| Operating Expenses | $8,450M |\n| Interest Expense | $3,800M |\n| Tax Expense | $2,568M |",
+      "context": "Margin analysis reveals how much profit is retained at each stage of the income statement.",
+      "expected": "26.32",
+      "category": "profitability"
+    },
+    {
+      "id": "fr07",
+      "question": "Calculate the sustainable growth rate: SGR = ROE x (1 - Payout Ratio). First compute ROE (Net Income / Equity) and the payout ratio (Dividends / Net Income), then combine them.",
+      "table": "| Item | 2023 |\n|---|---|\n| Net Income | $8,200M |\n| Shareholders' Equity (avg) | $45,600M |\n| Dividends Paid | $2,460M |",
+      "context": "The sustainable growth rate estimates how fast a company can grow using only retained earnings without external financing.",
+      "expected": "12.59",
+      "category": "shareholder"
+    },
+    {
+      "id": "fr08",
+      "question": "Calculate the interest coverage ratio (EBIT/Interest) and the debt-to-equity ratio (Debt/Equity) for both years. What is the percentage improvement in the interest coverage ratio from 2022 to 2023?",
+      "table": "| Item | 2023 | 2022 |\n|---|---|---|\n| EBIT | $15,200M | $13,800M |\n| Interest Expense | $3,800M | $4,200M |\n| Total Debt | $67,800M | $72,300M |\n| Shareholders' Equity | $47,400M | $43,800M |",
+      "context": "Leverage analysis requires examining both coverage ratios and structural leverage together.",
+      "expected": "21.74",
+      "category": "leverage"
+    }
+  ]
 }

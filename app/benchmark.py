@@ -1,10 +1,13 @@
 """
-Benchmark Runner -- Two controlled experiments on two architectures.
+Benchmark Runner -- Three controlled experiments on two architectures.
 
 Section 1: BERT 110M (Sentiment Classification)
   - Base BERT vs FinBERT (fine-tuned) vs BERT + RAG vs Hybrid (FinBERT + RAG)
 
 Section 2: Llama2 7B (Numerical Reasoning)
+  - Base Llama2-7B vs FinQA-7B (fine-tuned) vs Llama2-7B + RAG vs FinQA-7B + RAG (hybrid)
+
+Section 3: Llama2 7B (Financial Ratios)
   - Base Llama2-7B vs FinQA-7B (fine-tuned) vs Llama2-7B + RAG vs FinQA-7B + RAG (hybrid)
 
 Usage:
@@ -115,19 +118,28 @@ NUMERICAL_CASES = [
 ]
 
 
+def _is_year(s: str) -> bool:
+    """Return True if string looks like a 4-digit year (1900-2099)."""
+    try:
+        n = float(s)
+        return n == int(n) and 1900 <= int(n) <= 2099
+    except (ValueError, OverflowError):
+        return False
+
+
 def _extract_number(text: str):
-    """Try to extract a key number from model output."""
+    """Try to extract a key number from model output, skipping years."""
     import re
     # Look for percentages first
-    pcts = re.findall(r'(\d+\.?\d*)\s*%', text)
+    pcts = [p for p in re.findall(r'(\d+\.?\d*)\s*%', text) if not _is_year(p)]
     if pcts:
         return pcts[0]
     # Look for ratios (e.g., 1.10)
-    ratios = re.findall(r'(\d+\.\d{2,})', text)
+    ratios = [r for r in re.findall(r'(\d+\.\d{2,})', text) if not _is_year(r)]
     if ratios:
         return ratios[0]
-    # Any number
-    nums = re.findall(r'(\d+\.?\d+)', text)
+    # Any number (skip years and dollar amounts in the thousands)
+    nums = [n for n in re.findall(r'(\d+\.?\d+)', text) if not _is_year(n)]
     return nums[0] if nums else None
 
 
@@ -179,7 +191,7 @@ def run_llama_numerical_benchmark():
             try:
                 r = model_fns[name](q, table, ctx)
                 correct, extracted = _check_numerical(r.answer, expected)
-                row[f"{name}_answer"] = r.answer[:200]
+                row[f"{name}_answer"] = r.answer[:500]
                 row[f"{name}_extracted"] = extracted
                 row[f"{name}_correct"] = correct
                 row[f"{name}_latency_ms"] = r.latency_ms
@@ -199,10 +211,220 @@ def run_llama_numerical_benchmark():
 
 
 # -------------------------------------------------------------------------
+# Section 3: Llama2 7B Financial Ratios
+# -------------------------------------------------------------------------
+FINANCIAL_RATIO_CASES = [
+    {
+        "id": "fr01",
+        "table": "| Item | 2023 |\n|---|---|\n| Net Income | $8,200M |\n| Revenue | $56,300M |\n| Total Assets (avg) | $187,600M |\n| Shareholders' Equity (avg) | $45,600M |",
+        "context": "Analysts use the DuPont framework to decompose return on equity into profitability, efficiency, and leverage components.",
+        "question": "Decompose the Return on Equity using the 3-component DuPont formula: ROE = (Net Income/Revenue) x (Revenue/Total Assets) x (Total Assets/Equity). What is the ROE percentage?",
+        "expected": "17.98",
+        "category": "profitability",
+    },
+    {
+        "id": "fr02",
+        "table": "| Item | 2023 | 2020 |\n|---|---|---|\n| Revenue | $56,300M | $42,100M |",
+        "context": "The company achieved consistent revenue growth over the three-year period from 2020 to 2023.",
+        "question": "Calculate the 3-year Compound Annual Growth Rate (CAGR) of revenue from 2020 to 2023. CAGR = (End/Start)^(1/n) - 1.",
+        "expected": "10.17",
+        "category": "efficiency",
+    },
+    {
+        "id": "fr03",
+        "table": "| Item | Q4 2023 | Q3 2023 |\n|---|---|---|\n| Current Assets | $125,400M | $118,200M |\n| Current Liabilities | $89,500M | $92,100M |",
+        "context": "The bank improved its short-term liquidity position in Q4 through asset growth and liability reduction.",
+        "question": "Calculate the working capital for both quarters, then compute the percentage change in working capital from Q3 to Q4.",
+        "expected": "37.55",
+        "category": "liquidity",
+    },
+    {
+        "id": "fr04",
+        "table": "| Item | 2023 |\n|---|---|\n| Short-term Debt | $12,400M |\n| Long-term Debt | $55,400M |\n| Common Stock | $18,200M |\n| Additional Paid-in Capital | $9,800M |\n| Retained Earnings | $19,400M |",
+        "context": "The company's capital structure includes multiple debt and equity components.",
+        "question": "Calculate the debt-to-equity ratio by first summing all debt components and all equity components, then dividing total debt by total equity.",
+        "expected": "1.43",
+        "category": "leverage",
+    },
+    {
+        "id": "fr05",
+        "table": "| Item | 2023 |\n|---|---|\n| Net Income | $8,200M |\n| Depreciation & Amortization | $3,400M |\n| Increase in Accounts Receivable | $1,200M |\n| Increase in Accounts Payable | $800M |\n| Current Liabilities | $89,500M |",
+        "context": "Operating cash flow adjusts net income for non-cash items and working capital changes.",
+        "question": "Calculate the operating cash flow ratio. First compute Operating Cash Flow = Net Income + D&A - Increase in AR + Increase in AP. Then divide by Current Liabilities.",
+        "expected": "12.51",
+        "category": "liquidity",
+    },
+    {
+        "id": "fr06",
+        "table": "| Item | 2023 |\n|---|---|\n| Revenue | $56,300M |\n| Cost of Goods Sold | $33,780M |\n| Operating Expenses | $8,450M |\n| Interest Expense | $3,800M |\n| Tax Expense | $2,568M |",
+        "context": "Margin analysis reveals how much profit is retained at each stage of the income statement.",
+        "question": "Calculate the gross margin, operating margin, and net profit margin. Then compute the spread between gross margin and net margin (gross margin minus net margin) in percentage points.",
+        "expected": "26.32",
+        "category": "profitability",
+    },
+    {
+        "id": "fr07",
+        "table": "| Item | 2023 |\n|---|---|\n| Net Income | $8,200M |\n| Shareholders' Equity (avg) | $45,600M |\n| Dividends Paid | $2,460M |",
+        "context": "The sustainable growth rate estimates how fast a company can grow using only retained earnings without external financing.",
+        "question": "Calculate the sustainable growth rate: SGR = ROE x (1 - Payout Ratio). First compute ROE (Net Income / Equity) and the payout ratio (Dividends / Net Income), then combine them.",
+        "expected": "12.59",
+        "category": "shareholder",
+    },
+    {
+        "id": "fr08",
+        "table": "| Item | 2023 | 2022 |\n|---|---|---|\n| EBIT | $15,200M | $13,800M |\n| Interest Expense | $3,800M | $4,200M |\n| Total Debt | $67,800M | $72,300M |\n| Shareholders' Equity | $47,400M | $43,800M |",
+        "context": "Leverage analysis requires examining both coverage ratios and structural leverage together.",
+        "question": "Calculate the interest coverage ratio (EBIT/Interest) and the debt-to-equity ratio (Debt/Equity) for both years. What is the percentage improvement in the interest coverage ratio from 2022 to 2023?",
+        "expected": "21.74",
+        "category": "leverage",
+    },
+]
+
+
+FINANCIAL_RATIO_LABELS = {
+    "base": "Base Llama2-7B",
+    "finetuned": "FinQA-7B (fine-tuned Llama2-7B)",
+    "rag": "Llama2-7B + RAG (base model)",
+    "hybrid": "FinQA-7B + RAG (fine-tuned + retrieval)",
+}
+
+
+def _format_time(seconds):
+    """Format seconds as 'Xm Ys'."""
+    m, s = divmod(int(seconds), 60)
+    return f"{m}m {s}s" if m else f"{s}s"
+
+
+def _save_financial_ratio_results(results, model_names):
+    """Save partial/complete financial ratio results to disk, preserving other sections."""
+    existing = {}
+    if RESULTS_PATH.exists():
+        try:
+            with open(RESULTS_PATH) as f:
+                existing = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            existing = {}
+
+    existing_sections = existing.get("sections", {})
+    summary = compute_section_summary(results, model_names) if results else {}
+
+    output = {
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "sections": {
+            "bert_110m_sentiment": existing_sections.get("bert_110m_sentiment", {
+                "title": "BERT 110M -- Sentiment Classification",
+                "architecture": "BERT-base-uncased (110M parameters)",
+                "models": ["base", "finbert", "rag", "hybrid"],
+                "model_labels": {"base": "Base BERT (no FT, no RAG)",
+                                 "finbert": "FinBERT (fine-tuned)",
+                                 "rag": "BERT + RAG (retrieval + voting)",
+                                 "hybrid": "FinBERT + RAG (hybrid)"},
+                "summary": {}, "results": [],
+            }),
+            "llama2_7b_numerical": existing_sections.get("llama2_7b_numerical", {
+                "title": "Llama2 7B -- Numerical Reasoning",
+                "architecture": "Llama2-7B (7B parameters)",
+                "models": ["base", "finetuned", "rag", "hybrid"],
+                "model_labels": {"base": "Base Llama2-7B",
+                                 "finetuned": "FinQA-7B (fine-tuned Llama2-7B)",
+                                 "rag": "Llama2-7B + RAG (base model)",
+                                 "hybrid": "FinQA-7B + RAG (fine-tuned + retrieval)"},
+                "summary": {}, "results": [],
+            }),
+            "llama2_7b_financial_ratios": {
+                "title": "Llama2 7B -- Financial Ratios",
+                "architecture": "Llama2-7B (7B parameters)",
+                "models": list(model_names),
+                "model_labels": FINANCIAL_RATIO_LABELS,
+                "summary": summary,
+                "results": results,
+            },
+        },
+    }
+
+    # Atomic write: write to temp file then rename
+    tmp_path = RESULTS_PATH.with_suffix(".tmp")
+    RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(tmp_path, "w") as f:
+        json.dump(output, f, indent=2)
+    tmp_path.replace(RESULTS_PATH)
+
+
+def run_financial_ratio_benchmark():
+    """Llama2-7B: base vs fine-tuned vs RAG vs hybrid on financial ratio calculations.
+
+    Saves results incrementally after each case completes."""
+    from demo_utils import (
+        call_finetuned_model, call_base_model, call_rag_model,
+        call_hybrid_model, has_llm, LLM_MODEL,
+    )
+
+    if not has_llm():
+        print("  [SKIP] Ollama not available -- skipping Financial Ratio benchmark")
+        return []
+
+    model_names = ["base", "finetuned", "rag", "hybrid"]
+    model_fns = {
+        "base": call_base_model,
+        "finetuned": call_finetuned_model,
+        "rag": call_rag_model,
+        "hybrid": call_hybrid_model,
+    }
+
+    total_cases = len(FINANCIAL_RATIO_CASES)
+    print(f"  Running {total_cases} financial ratio cases x {len(model_names)} approaches ({LLM_MODEL})...")
+    results = []
+    start_time = time.perf_counter()
+
+    for i, case in enumerate(FINANCIAL_RATIO_CASES):
+        q, table, ctx = case["question"], case["table"], case["context"]
+        expected = case["expected"]
+
+        row = {"id": case["id"], "question": q, "expected": expected,
+               "category": case["category"]}
+
+        for name in model_names:
+            try:
+                r = model_fns[name](q, table, ctx)
+                correct, extracted = _check_numerical(r.answer, expected)
+                row[f"{name}_answer"] = r.answer[:500]
+                row[f"{name}_extracted"] = extracted
+                row[f"{name}_correct"] = correct
+                row[f"{name}_latency_ms"] = r.latency_ms
+            except Exception as e:
+                row[f"{name}_correct"] = False
+                row[f"{name}_answer"] = str(e)[:100]
+
+        results.append(row)
+
+        # Progress with ETA
+        elapsed = time.perf_counter() - start_time
+        avg_per_case = elapsed / (i + 1)
+        remaining = total_cases - (i + 1)
+        eta = avg_per_case * remaining
+
+        marks = "  ".join(
+            f"{n}={'Y' if row.get(f'{n}_correct') else 'N'}"
+            for n in model_names
+        )
+        print(f"    [{i+1:>2}/{total_cases}] expected={expected:>6}  {marks}  "
+              f"(elapsed: {_format_time(elapsed)}, ETA: {_format_time(eta)})")
+
+        # Incremental save after each case
+        _save_financial_ratio_results(results, model_names)
+        print(f"           -> Saved {i+1}/{total_cases} results to {RESULTS_PATH.name}")
+
+    total_elapsed = time.perf_counter() - start_time
+    print(f"\n  Financial Ratio benchmark complete in {_format_time(total_elapsed)}")
+    return results
+
+
+# -------------------------------------------------------------------------
 # Streaming (case-by-case) versions for live UI
 # -------------------------------------------------------------------------
 SENTIMENT_MODEL_NAMES = ["base", "finbert", "rag", "hybrid"]
 NUMERICAL_MODEL_NAMES = ["base", "finetuned", "rag", "hybrid"]
+FINANCIAL_RATIO_MODEL_NAMES = ["base", "finetuned", "rag", "hybrid"]
 
 
 def get_sentiment_cases():
@@ -214,6 +436,11 @@ def get_sentiment_cases():
 def get_numerical_cases():
     """Return the numerical reasoning test cases list."""
     return NUMERICAL_CASES
+
+
+def get_financial_ratio_cases():
+    """Return the financial ratio test cases list."""
+    return FINANCIAL_RATIO_CASES
 
 
 def run_single_sentiment_case(case):
@@ -277,11 +504,11 @@ def run_single_numerical_model(row, case, model_name):
     try:
         r = fn(q, table, ctx)
         correct, extracted = _check_numerical(r.answer, expected)
-        row[f"{model_name}_answer"] = r.answer[:200]
+        row[f"{model_name}_answer"] = r.answer[:500]
         row[f"{model_name}_extracted"] = extracted
         row[f"{model_name}_correct"] = correct
         row[f"{model_name}_latency_ms"] = r.latency_ms
-        return {"answer": r.answer[:200], "correct": correct,
+        return {"answer": r.answer[:500], "correct": correct,
                 "extracted": extracted, "latency_ms": r.latency_ms}
     except Exception as e:
         row[f"{model_name}_correct"] = False
@@ -351,9 +578,9 @@ def compute_section_summary(results, model_keys):
 
 
 def run_full_benchmark():
-    """Run both benchmark sections and save."""
+    """Run all three benchmark sections and save."""
     print("=" * 70)
-    print("BENCHMARK: Two controlled experiments")
+    print("BENCHMARK: Three controlled experiments")
     print("=" * 70)
 
     # Section 1: BERT 110M
@@ -362,11 +589,17 @@ def run_full_benchmark():
     sent_summary = compute_section_summary(
         sent_results, ["base", "finbert", "rag", "hybrid"])
 
-    # Section 2: Llama2 7B
+    # Section 2: Llama2 7B Numerical
     print("\n--- Section 2: Llama2 7B (Numerical Reasoning) ---")
     num_results = run_llama_numerical_benchmark()
     num_summary = compute_section_summary(
         num_results, ["base", "finetuned", "rag", "hybrid"])
+
+    # Section 3: Llama2 7B Financial Ratios
+    print("\n--- Section 3: Llama2 7B (Financial Ratios) ---")
+    ratio_results = run_financial_ratio_benchmark()
+    ratio_summary = compute_section_summary(
+        ratio_results, ["base", "finetuned", "rag", "hybrid"])
 
     output = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -396,6 +629,19 @@ def run_full_benchmark():
                 },
                 "summary": num_summary,
                 "results": num_results,
+            },
+            "llama2_7b_financial_ratios": {
+                "title": "Llama2 7B -- Financial Ratios",
+                "architecture": "Llama2-7B (7B parameters)",
+                "models": ["base", "finetuned", "rag", "hybrid"],
+                "model_labels": {
+                    "base": "Base Llama2-7B",
+                    "finetuned": "FinQA-7B (fine-tuned Llama2-7B)",
+                    "rag": "Llama2-7B + RAG (base model)",
+                    "hybrid": "FinQA-7B + RAG (fine-tuned + retrieval)",
+                },
+                "summary": ratio_summary,
+                "results": ratio_results,
             },
         },
     }

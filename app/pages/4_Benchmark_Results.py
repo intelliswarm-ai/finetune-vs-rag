@@ -1,10 +1,11 @@
 """
 Benchmark Results Page
-Two controlled experiments, each comparing Base vs Fine-Tuned vs RAG vs Hybrid
+Three controlled experiments, each comparing Base vs Fine-Tuned vs RAG vs Hybrid
 on the SAME architecture.
 
 Section 1: BERT 110M (Sentiment) -- Base BERT vs FinBERT vs BERT+RAG vs Hybrid
 Section 2: Llama2 7B (Numerical)  -- Base Llama2 vs Expert prompt vs Llama2+RAG vs Hybrid
+Section 3: Llama2 7B (Financial Ratios) -- Base Llama2 vs FinQA-7B vs Llama2+RAG vs Hybrid
 
 Supports both pre-loaded results and live real-time benchmark execution.
 """
@@ -22,7 +23,7 @@ st.set_page_config(page_title="Benchmark Results", page_icon="FT", layout="wide"
 
 st.title("Benchmark Results (Our Own Measurements)")
 st.markdown("""
-Two controlled experiments comparing **Base Model vs Fine-Tuned vs RAG vs Hybrid**.
+Three controlled experiments comparing **Base Model vs Fine-Tuned vs RAG vs Hybrid**.
 Each experiment uses the **same architecture and parameter count** so the
 only variable is the approach.
 
@@ -30,6 +31,7 @@ only variable is the approach.
 |-----------|-------------|-----------|------|
 | **Section 1** | BERT-base (110M params) | Base, FinBERT, RAG, Hybrid | Sentiment classification |
 | **Section 2** | Llama2-7B (7B params) | Base, FinQA-7B, RAG (base), Hybrid (FinQA-7B+RAG) | Numerical reasoning |
+| **Section 3** | Llama2-7B (7B params) | Base, FinQA-7B, RAG (base), Hybrid (FinQA-7B+RAG) | Financial ratio calculation |
 
 Every number was measured by running our actual models. Nothing from papers.
 """)
@@ -48,6 +50,13 @@ SENTIMENT_LABELS = {
 }
 
 NUMERICAL_LABELS = {
+    "base": "Base Llama2-7B",
+    "finetuned": "FinQA-7B (fine-tuned Llama2-7B)",
+    "rag": "Llama2-7B + RAG (base model)",
+    "hybrid": "FinQA-7B + RAG (fine-tuned + retrieval)",
+}
+
+FINANCIAL_RATIO_LABELS = {
     "base": "Base Llama2-7B",
     "finetuned": "FinQA-7B (fine-tuned Llama2-7B)",
     "rag": "Llama2-7B + RAG (base model)",
@@ -455,6 +464,153 @@ def run_live_numerical_benchmark():
     return all_results
 
 
+def run_live_financial_ratio_benchmark():
+    """Run Llama2 7B financial ratio benchmark with per-MODEL live UI updates."""
+    import plotly.graph_objects as go
+    from benchmark import (
+        get_financial_ratio_cases, init_numerical_row,
+        run_single_numerical_model, compute_live_stats,
+        FINANCIAL_RATIO_MODEL_NAMES,
+    )
+    from demo_utils import has_llm, LLM_MODEL
+
+    if not has_llm():
+        st.warning("Ollama not reachable -- cannot run Financial Ratio benchmark live.")
+        return []
+
+    cases = get_financial_ratio_cases()
+    models = FINANCIAL_RATIO_MODEL_NAMES
+    labels = FINANCIAL_RATIO_LABELS
+    total_steps = len(cases) * len(models)
+
+    st.subheader(f"Llama2 7B -- Financial Ratios (LIVE, model: {LLM_MODEL})")
+    st.caption("Architecture: Llama2-7B (7B parameters) -- same for all four approaches")
+
+    progress = st.progress(0, text="Starting benchmark...")
+    activity_placeholder = st.empty()
+
+    metric_cols = st.columns(len(models))
+    metric_placeholders = {}
+    for col, m in zip(metric_cols, models):
+        with col:
+            metric_placeholders[m] = st.empty()
+            metric_placeholders[m].metric(labels[m], "0%", delta="0/0")
+
+    chart_placeholder = st.empty()
+    latency_chart_placeholder = st.empty()
+    table_placeholder = st.empty()
+    answer_container = st.container()
+
+    all_results = []
+    current_rows = []
+    start_time = time.perf_counter()
+    step = 0
+
+    for i, case in enumerate(cases):
+        row = init_numerical_row(case)
+        current_rows.append(row)
+
+        for m in models:
+            step += 1
+            elapsed_so_far = (time.perf_counter() - start_time)
+            avg_per_step = elapsed_so_far / step if step > 1 else 0
+            remaining_steps = total_steps - step
+            eta = f" | ETA: {avg_per_step * remaining_steps:.0f}s" if step > 1 else ""
+
+            short_label = labels[m].split("(")[0].strip()
+            progress.progress(
+                step / total_steps,
+                text=(
+                    f"Case {i+1}/{len(cases)} -- "
+                    f"Model {models.index(m)+1}/{len(models)}: "
+                    f"**{short_label}**{eta}"
+                ),
+            )
+
+            activity_placeholder.info(
+                f"Calling **{short_label}** on: "
+                f"*\"{case['question'][:60]}...\"*\n\n"
+                f"Expected answer: **{case['expected']}**",
+                icon="🔄",
+            )
+
+            result = run_single_numerical_model(row, case, m)
+
+            ok_icon = "✅" if result["correct"] else "❌"
+            activity_placeholder.success(
+                f"{ok_icon} **{short_label}** returned: "
+                f"**{result.get('extracted', '?')}** "
+                f"(expected: {case['expected']}) -- "
+                f"{result['latency_ms']:.0f}ms",
+                icon="✅" if result["correct"] else "❌",
+            )
+
+            _update_live_table(table_placeholder, current_rows, models, labels)
+
+        all_results.append(row)
+        stats = compute_live_stats(all_results, models)
+
+        for m in models:
+            s = stats[m]
+            metric_placeholders[m].metric(
+                labels[m],
+                f"{s['accuracy']}%",
+                delta=f"{s['correct']}/{s['total']}",
+            )
+
+        fig = go.Figure()
+        for m in models:
+            s = stats[m]
+            fig.add_trace(go.Bar(
+                name=labels[m], x=["Accuracy (%)"],
+                y=[s["accuracy"]],
+                marker_color=COLORS.get(m, "#999"),
+                text=[f"{s['accuracy']}%"], textposition="auto",
+            ))
+        fig.update_layout(
+            title=f"Accuracy after {len(all_results)}/{len(cases)} cases",
+            barmode="group", yaxis_range=[0, 105],
+        )
+        chart_placeholder.plotly_chart(fig, use_container_width=True)
+
+        fig2 = go.Figure()
+        for m in models:
+            s = stats[m]
+            if s["avg_latency_ms"]:
+                fig2.add_trace(go.Bar(
+                    name=labels[m], x=["Avg Latency (ms)"],
+                    y=[s["avg_latency_ms"]],
+                    marker_color=COLORS.get(m, "#999"),
+                    text=[f"{s['avg_latency_ms']:.0f}ms"], textposition="auto",
+                ))
+        fig2.update_layout(title="Average Latency (running)", barmode="group")
+        latency_chart_placeholder.plotly_chart(fig2, use_container_width=True)
+
+        with answer_container:
+            with st.expander(
+                f"Case {i+1}: {case['question'][:60]}... "
+                f"(expected: {case['expected']})",
+                expanded=(i == len(cases) - 1),
+            ):
+                for m in models:
+                    ok = "CORRECT" if row.get(f"{m}_correct") else "WRONG"
+                    ans = row.get(f"{m}_answer", "N/A")[:300]
+                    lat = row.get(f"{m}_latency_ms", 0)
+                    st.markdown(
+                        f"**{labels[m]}** [{ok}] ({lat:.0f}ms):\n> {ans}"
+                    )
+
+    elapsed = (time.perf_counter() - start_time) * 1000
+    progress.progress(1.0, text=f"Benchmark complete! ({elapsed/1000:.1f}s total)")
+    activity_placeholder.success(
+        f"All {len(cases)} cases x {len(models)} models complete "
+        f"in {elapsed/1000:.1f}s",
+        icon="🏁",
+    )
+
+    return all_results
+
+
 def _update_live_table(placeholder, rows, models, labels):
     """Render the results table, showing partial model results as they come in."""
     table_rows = []
@@ -477,9 +633,10 @@ def _update_live_table(placeholder, rows, models, labels):
 # =========================================================================
 # Main tabs
 # =========================================================================
-tab1, tab2, tab3 = st.tabs([
+tab1, tab2, tab3, tab4 = st.tabs([
     "BERT 110M (Sentiment)",
     "Llama2 7B (Numerical)",
+    "Llama2 7B (Financial Ratios)",
     "Striking Examples",
 ])
 
@@ -511,6 +668,7 @@ with tab1:
             with open(RESULTS_PATH) as f:
                 existing = json.load(f)
 
+        existing_sections = existing.get("sections", {})
         output = {
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             "sections": {
@@ -522,12 +680,22 @@ with tab1:
                     "summary": sent_summary,
                     "results": sent_results,
                 },
-                "llama2_7b_numerical": existing.get("sections", {}).get(
+                "llama2_7b_numerical": existing_sections.get(
                     "llama2_7b_numerical", {
                         "title": "Llama2 7B -- Numerical Reasoning",
                         "architecture": "Llama2-7B (7B parameters)",
                         "models": ["base", "finetuned", "rag", "hybrid"],
                         "model_labels": NUMERICAL_LABELS,
+                        "summary": {},
+                        "results": [],
+                    }
+                ),
+                "llama2_7b_financial_ratios": existing_sections.get(
+                    "llama2_7b_financial_ratios", {
+                        "title": "Llama2 7B -- Financial Ratios",
+                        "architecture": "Llama2-7B (7B parameters)",
+                        "models": ["base", "finetuned", "rag", "hybrid"],
+                        "model_labels": FINANCIAL_RATIO_LABELS,
                         "summary": {},
                         "results": [],
                     }
@@ -593,10 +761,11 @@ with tab2:
                 with open(RESULTS_PATH) as f:
                     existing = json.load(f)
 
+            existing_sections = existing.get("sections", {})
             output = {
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "sections": {
-                    "bert_110m_sentiment": existing.get("sections", {}).get(
+                    "bert_110m_sentiment": existing_sections.get(
                         "bert_110m_sentiment", {
                             "title": "BERT 110M -- Sentiment Classification",
                             "architecture": "BERT-base-uncased (110M parameters)",
@@ -614,6 +783,16 @@ with tab2:
                         "summary": num_summary,
                         "results": num_results,
                     },
+                    "llama2_7b_financial_ratios": existing_sections.get(
+                        "llama2_7b_financial_ratios", {
+                            "title": "Llama2 7B -- Financial Ratios",
+                            "architecture": "Llama2-7B (7B parameters)",
+                            "models": ["base", "finetuned", "rag", "hybrid"],
+                            "model_labels": FINANCIAL_RATIO_LABELS,
+                            "summary": {},
+                            "results": [],
+                        }
+                    ),
                 },
             }
             RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -665,6 +844,126 @@ with tab2:
             st.info("No saved results. Click **Run Live Benchmark** to generate them.")
 
 with tab3:
+    col_btn5, col_btn6 = st.columns(2)
+    with col_btn5:
+        run_live_ratio = st.button(
+            "Run Live Benchmark (Financial Ratios)",
+            type="primary", use_container_width=True,
+            key="live_ratio",
+        )
+    with col_btn6:
+        show_saved_ratio = st.button(
+            "Show Saved Results",
+            use_container_width=True,
+            key="saved_ratio",
+        )
+
+    if run_live_ratio:
+        ratio_results = run_live_financial_ratio_benchmark()
+
+        if ratio_results:
+            from benchmark import compute_section_summary, FINANCIAL_RATIO_MODEL_NAMES
+            ratio_summary = compute_section_summary(ratio_results, FINANCIAL_RATIO_MODEL_NAMES)
+
+            existing = {}
+            if RESULTS_PATH.exists():
+                with open(RESULTS_PATH) as f:
+                    existing = json.load(f)
+
+            existing_sections = existing.get("sections", {})
+            output = {
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "sections": {
+                    "bert_110m_sentiment": existing_sections.get(
+                        "bert_110m_sentiment", {
+                            "title": "BERT 110M -- Sentiment Classification",
+                            "architecture": "BERT-base-uncased (110M parameters)",
+                            "models": ["base", "finbert", "rag", "hybrid"],
+                            "model_labels": SENTIMENT_LABELS,
+                            "summary": {},
+                            "results": [],
+                        }
+                    ),
+                    "llama2_7b_numerical": existing_sections.get(
+                        "llama2_7b_numerical", {
+                            "title": "Llama2 7B -- Numerical Reasoning",
+                            "architecture": "Llama2-7B (7B parameters)",
+                            "models": ["base", "finetuned", "rag", "hybrid"],
+                            "model_labels": NUMERICAL_LABELS,
+                            "summary": {},
+                            "results": [],
+                        }
+                    ),
+                    "llama2_7b_financial_ratios": {
+                        "title": "Llama2 7B -- Financial Ratios",
+                        "architecture": "Llama2-7B (7B parameters)",
+                        "models": list(FINANCIAL_RATIO_MODEL_NAMES),
+                        "model_labels": FINANCIAL_RATIO_LABELS,
+                        "summary": ratio_summary,
+                        "results": ratio_results,
+                    },
+                },
+            }
+            RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with open(RESULTS_PATH, "w") as f:
+                json.dump(output, f, indent=2)
+            st.success("Results saved!")
+
+    elif show_saved_ratio or (not run_live_ratio):
+        if results_data and "llama2_7b_financial_ratios" in results_data.get("sections", {}):
+            sections = results_data["sections"]
+            section = sections["llama2_7b_financial_ratios"]
+            timestamp = results_data.get("timestamp", "unknown")
+            st.caption(f"Saved results from: {timestamp}")
+            if section.get("results"):
+                render_section(section)
+
+                s = section["summary"]
+                base = s.get("base", {})
+                ft = s.get("finetuned", {})
+                rag = s.get("rag", {})
+                hyb = s.get("hybrid", {})
+
+                st.divider()
+
+                # Determine best model dynamically
+                accuracies = {"Base Llama2-7B": base.get('accuracy', 0),
+                              "FinQA-7B": ft.get('accuracy', 0),
+                              "RAG (base)": rag.get('accuracy', 0),
+                              "Hybrid (FinQA-7B + RAG)": hyb.get('accuracy', 0)}
+                best_model = max(accuracies, key=accuracies.get)
+                best_acc = accuracies[best_model]
+
+                st.markdown(f"""
+                **Analysis (Llama2 7B, Financial Ratios):**
+
+                - Base Llama2-7B: **{base.get('accuracy',0)}%** | FinQA-7B: **{ft.get('accuracy',0)}%** | RAG (base): **{rag.get('accuracy',0)}%** | Hybrid (FinQA-7B + RAG): **{hyb.get('accuracy',0)}%**
+                - **Best performer: {best_model} at {best_acc}%**
+                - These multi-step ratio calculations test formula knowledge, chained arithmetic, and domain conventions
+                - Fine-tuning helps most on tasks requiring domain-specific reasoning chains (e.g., DuPont decomposition, sustainable growth rate)
+                - RAG adds latency and can introduce noise when retrieved documents are not directly relevant to the calculation
+                - Performance varies by category -- see the category breakdown for details
+                - All four share the same Llama2-7B (7B parameters) base architecture
+                """)
+
+                with st.expander("Full model answers"):
+                    for r in section["results"]:
+                        st.markdown(f"**Q:** {r['question']}")
+                        st.markdown(f"**Expected:** {r['expected']}")
+                        for m in section["models"]:
+                            ok = "CORRECT" if r.get(f"{m}_correct") else "WRONG"
+                            ans = r.get(f"{m}_answer", "N/A")[:300]
+                            st.markdown(f"**{section['model_labels'].get(m,m)}** [{ok}]:\n> {ans}")
+                        st.divider()
+            else:
+                st.warning(
+                    "Financial Ratio benchmark was skipped (Ollama not available during run). "
+                    "Click **Run Live Benchmark** to generate results."
+                )
+        else:
+            st.info("No saved results. Click **Run Live Benchmark** to generate them.")
+
+with tab4:
     st.subheader("Striking Examples")
 
     with open(TEST_CASES_PATH) as f:
@@ -691,7 +990,7 @@ with tab3:
 
 st.divider()
 st.markdown(
-    "All results measured in this environment. Two controlled experiments, "
+    "All results measured in this environment. Three controlled experiments, "
     "each comparing four approaches (base, fine-tuned, RAG, hybrid) while "
     "keeping architecture constant."
 )

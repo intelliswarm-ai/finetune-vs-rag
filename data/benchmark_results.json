@@ -1,10 +1,15 @@
 {
-  "timestamp": "2026-03-14 21:01:26",
+  "timestamp": "2026-03-15 16:42:48",
   "sections": {
     "bert_110m_sentiment": {
       "title": "BERT 110M -- Sentiment Classification",
       "architecture": "BERT-base-uncased (110M parameters)",
-      "models": ["base", "finbert", "rag", "hybrid"],
+      "models": [
+        "base",
+        "finbert",
+        "rag",
+        "hybrid"
+      ],
       "model_labels": {
         "base": "Base BERT (no FT, no RAG)",
         "finbert": "FinBERT (fine-tuned)",
@@ -729,7 +734,12 @@
     "llama2_7b_numerical": {
       "title": "Llama2 7B -- Numerical Reasoning",
       "architecture": "Llama2-7B (7B parameters)",
-      "models": ["base", "finetuned", "rag", "hybrid"],
+      "models": [
+        "base",
+        "finetuned",
+        "rag",
+        "hybrid"
+      ],
       "model_labels": {
         "base": "Base Llama2-7B",
         "finetuned": "FinQA-7B (fine-tuned Llama2-7B)",
@@ -890,6 +900,214 @@
           "hybrid_extracted": "15.19",
           "hybrid_correct": true,
           "hybrid_latency_ms": 83500.0
+        }
+      ]
+    },
+    "llama2_7b_financial_ratios": {
+      "title": "Llama2 7B -- Financial Ratios",
+      "architecture": "Llama2-7B (7B parameters)",
+      "models": [
+        "base",
+        "finetuned",
+        "rag",
+        "hybrid"
+      ],
+      "model_labels": {
+        "base": "Base Llama2-7B",
+        "finetuned": "FinQA-7B (fine-tuned Llama2-7B)",
+        "rag": "Llama2-7B + RAG (base model)",
+        "hybrid": "FinQA-7B + RAG (fine-tuned + retrieval)"
+      },
+      "summary": {
+        "base": {
+          "accuracy": 16.7,
+          "correct": 1,
+          "total": 6,
+          "avg_latency_ms": 46591.0,
+          "avg_confidence": null
+        },
+        "finetuned": {
+          "accuracy": 16.7,
+          "correct": 1,
+          "total": 6,
+          "avg_latency_ms": 46707.7,
+          "avg_confidence": null
+        },
+        "rag": {
+          "accuracy": 16.7,
+          "correct": 1,
+          "total": 6,
+          "avg_latency_ms": 123972.9,
+          "avg_confidence": null
+        },
+        "hybrid": {
+          "accuracy": 33.3,
+          "correct": 2,
+          "total": 6,
+          "avg_latency_ms": 133682.1,
+          "avg_confidence": null
+        },
+        "category_efficiency": {
+          "total": 1,
+          "base_accuracy": 0.0,
+          "finetuned_accuracy": 0.0,
+          "rag_accuracy": 0.0,
+          "hybrid_accuracy": 0.0
+        },
+        "category_leverage": {
+          "total": 1,
+          "base_accuracy": 100.0,
+          "finetuned_accuracy": 100.0,
+          "rag_accuracy": 100.0,
+          "hybrid_accuracy": 100.0
+        },
+        "category_liquidity": {
+          "total": 2,
+          "base_accuracy": 0.0,
+          "finetuned_accuracy": 0.0,
+          "rag_accuracy": 0.0,
+          "hybrid_accuracy": 50.0
+        },
+        "category_profitability": {
+          "total": 2,
+          "base_accuracy": 0.0,
+          "finetuned_accuracy": 0.0,
+          "rag_accuracy": 0.0,
+          "hybrid_accuracy": 0.0
+        }
+      },
+      "results": [
+        {
+          "id": "fr01",
+          "question": "Decompose the Return on Equity using the 3-component DuPont formula: ROE = (Net Income/Revenue) x (Revenue/Total Assets) x (Total Assets/Equity). What is the ROE percentage?",
+          "expected": "17.98",
+          "category": "profitability",
+          "base_answer": "\nTo decompose the return on equity (ROE) using the 3-component DuPont formula, we need to calculate the following components:\n\n1. Profitability: Net Income / Revenue = $8,200M / $56,300M = 0.147 or 14.7%\n2. Efficiency: Revenue / Total Assets = $56,300M / $187,600M = 0.30 or 30%\n3. Leverage: Total Assets / Shareholders' Equity = $187,600M / $45,600M = 4.1 or 410%\n\nNow, we can calculate the ROE percentage by multiplying these components:\n\nROE = (Net Income/Revenue) x (Revenue/Total Assets) x (Tota",
+          "base_extracted": "14.7",
+          "base_correct": false,
+          "base_latency_ms": 51352.3,
+          "finetuned_answer": "\nTo decompose the return on equity (ROE) using the 3-component DuPont formula, we need to calculate the profitability, efficiency, and leverage components separately and then multiply them together.\n\n1. Profitability Component:\nNet Income / Revenue = $8,200M / $56,300M = 0.147 or 14.7%\n2. Efficiency Component:\nRevenue / Total Assets = $56,300M / $187,600M = 0.30 or 30%\n3. Leverage Component:\nTotal Assets / Equity = $187,600M / $45,600M = 4.1 or 410%\n\nNow, we multiply these three components toget",
+          "finetuned_extracted": "14.7",
+          "finetuned_correct": false,
+          "finetuned_latency_ms": 51203.3,
+          "rag_answer": "To decompose the return on equity using the 3-component DuPont formula, we need to calculate the profitability, efficiency, and leverage components of ROE.\n\n1. Profitability Component: Net Income / Revenue = $8,200M / $56,300M = 0.147 or 14.7%\n2. Efficiency Component: Revenue / Total Assets = $56,300M / $187,600M = 0.30 or 30.0%\n3. Leverage Component: Total Assets / Shareholders' Equity = $187,600M / $45,600M = 4.1 or 410.0%\n\nNow, we multiply these components to get the ROE percentage:\nROE = (Ne",
+          "rag_extracted": "14.7",
+          "rag_correct": false,
+          "rag_latency_ms": 100104.3,
+          "hybrid_answer": "To decompose the Return on Equity using the 3-component DuPont formula, we need to calculate the profitability, efficiency, and leverage components separately and then multiply them together.\n\n1. Profitability Component:\nNet Income / Revenue = $8,200M / $56,300M = 0.147 or 14.7%\n\nThis means that for every dollar of revenue, the company generated 14.7 cents of net income.\n\n2. Efficiency Component:\nRevenue / Total Assets = $56,300M / $187,600M = 0.30 or 30.0%\n\nThis means that for every dollar of r",
+          "hybrid_extracted": "14.7",
+          "hybrid_correct": false,
+          "hybrid_latency_ms": 118679.3
+        },
+        {
+          "id": "fr02",
+          "question": "Calculate the 3-year Compound Annual Growth Rate (CAGR) of revenue from 2020 to 2023. CAGR = (End/Start)^(1/n) - 1.",
+          "expected": "10.17",
+          "category": "efficiency",
+          "base_answer": "\nTo calculate the 3-year Compound Annual Growth Rate (CAGR) of revenue from 2020 to 2023, we need to follow these steps:\n\n1. Calculate the growth rate for each year:\n\nYear    | Growth Rate\n--------|----------\n2020   | ($56,300M - $42,100M) / $42,100M = 31.7%\n2021   | ($56,300M - $42,100M) / $42,100M = 31.8%\n2022   | ($56,300M - $42,100M) / $42,100M = 31.9%\n2023   | ($56,300M - $42,100M) / $42,100M = 32.1%\n2. Calculate the average growth rate for the 3-year period:\n\nAverage Growth Rate = (31.7% +",
+          "base_extracted": "31.7",
+          "base_correct": false,
+          "base_latency_ms": 63132.5,
+          "finetuned_answer": "\nTo calculate the 3-year Compound Annual Growth Rate (CAGR) of revenue from 2020 to 2023, we need to follow these steps:\n\n1. Determine the end and start values for the period you want to analyze. In this case, the end value is $56,300M and the start value is $42,100M, which means the period is from 2020 to 2023.\n2. Calculate the growth rate for each year in the period:\n\nYear | Growth Rate\n---|---\n2020 | ($42,100M - $35,600M) / $35,600M = 0.178\n2021 | ($49,400M - $42,100M) / $42,100M = 0.157\n2022",
+          "finetuned_extracted": "0.178",
+          "finetuned_correct": false,
+          "finetuned_latency_ms": 62799.0,
+          "rag_answer": "To calculate the 3-year compound annual growth rate (CAGR) of revenue from 2020 to 2023, we will use the formula:\n\nCAGR = (End/Start)^(1/n) - 1\n\nWhere:\n\n* End is the final value in the period (in this case, $56,300M in 2023)\n* Start is the initial value in the period (in this case, $42,100M in 2020)\n* n is the number of periods (in this case, 3 years)\n\nFirst, let's calculate the growth rate for each year:\n\nYear Growth Rate\n2020 $42,100M - $56,300M = $14,200M / $42,100M = 0.33 (33%)\n2021 $50,900M",
+          "rag_extracted": "33",
+          "rag_correct": false,
+          "rag_latency_ms": 143656.7,
+          "hybrid_answer": "To calculate the 3-year Compound Annual Growth Rate (CAGR) of revenue from 2020 to 2023, we will use the formula:\n\nCAGR = (End/Start)^(1/n) - 1\n\nWhere:\n\n* End is the final value in the period (in this case, $56,300M in 2023)\n* Start is the initial value in the period (in this case, $42,100M in 2020)\n* n is the number of periods (in this case, 3 years)\n\nStep-by-step reasoning with precise calculations:\n\n1. Calculate the growth rate for each year:\n\nYear Growth Rate\n2020 $42,100M - $56,300M = $14,2",
+          "hybrid_extracted": "10.7",
+          "hybrid_correct": false,
+          "hybrid_latency_ms": 148008.3
+        },
+        {
+          "id": "fr03",
+          "question": "Calculate the working capital for both quarters, then compute the percentage change in working capital from Q3 to Q4.",
+          "expected": "37.55",
+          "category": "liquidity",
+          "base_answer": "\nTo calculate the working capital for each quarter, we need to subtract the current liabilities from the current assets.\n\nFor Q4 2023:\nWorking Capital = Current Assets - Current Liabilities\n= $125,400M - $89,500M\n= $35,900M\n\nFor Q3 2023:\nWorking Capital = Current Assets - Current Liabilities\n= $118,200M - $92,100M\n= $26,100M\n\nNow, to compute the percentage change in working capital from Q3 to Q4, we need to divide the increase in working capital by the initial working capital and multiply by 100",
+          "base_extracted": "100",
+          "base_correct": false,
+          "base_latency_ms": 41287.6,
+          "finetuned_answer": "\nTo calculate the working capital for each quarter, we need to subtract the current liabilities from the current assets:\n\nQ4 2023 Working Capital = Current Assets - Current Liabilities\n= $125,400M - $89,500M\n= $35,900M\n\nQ3 2023 Working Capital = Current Assets - Current Liabilities\n= $118,200M - $92,100M\n= $26,100M\n\nTo compute the percentage change in working capital from Q3 to Q4, we can use the following formula:\n\nPercentage Change = (New Value - Old Value) / Old Value x 100\n\nIn this case, the",
+          "finetuned_extracted": "34.7",
+          "finetuned_correct": false,
+          "finetuned_latency_ms": 42762.7,
+          "rag_answer": "To calculate the working capital for both quarters, we need to subtract the current liabilities from the current assets.\n\nQ4 2023:\nCurrent Assets = $125,400M\nCurrent Liabilities = $89,500M\nWorking Capital = Current Assets - Current Liabilities\n= $125,400M - $89,500M\n= $35,900M\n\nQ3 2023:\nCurrent Assets = $118,200M\nCurrent Liabilities = $92,100M\nWorking Capital = Current Assets - Current Liabilities\n= $118,200M - $92,100M\n= $26,100M\n\nPercentage change in working capital from Q3 to Q4:\n(($35,900M -",
+          "rag_extracted": "100",
+          "rag_correct": false,
+          "rag_latency_ms": 121971.5,
+          "hybrid_answer": "To calculate the working capital for both quarters, we need to subtract the current liabilities from the current assets.\n\nFor Q4 2023:\n\nCurrent Assets = $125,400M\nCurrent Liabilities = $89,500M\n\nWorking Capital = Current Assets - Current Liabilities\n= $125,400M - $89,500M\n= $35,900M\n\nFor Q3 2023:\n\nCurrent Assets = $118,200M\nCurrent Liabilities = $92,100M\n\nWorking Capital = Current Assets - Current Liabilities\n= $118,200M - $92,100M\n= $26,100M\n\nNow, to compute the percentage change in working cap",
+          "hybrid_extracted": "37.5",
+          "hybrid_correct": true,
+          "hybrid_latency_ms": 141643.3
+        },
+        {
+          "id": "fr04",
+          "question": "Calculate the debt-to-equity ratio by first summing all debt components and all equity components, then dividing total debt by total equity.",
+          "expected": "1.43",
+          "category": "leverage",
+          "base_answer": "\nTo calculate the debt-to-equity ratio, we need to add up all the debt components and all the equity components of the company.\n\nDebt components:\n\n* Short-term Debt: $12,400M\n* Long-term Debt: $55,400M\n\nTotal debt: $67,800M\n\nEquity components:\n\n* Common Stock: $18,200M\n* Additional Paid-in Capital: $9,800M\n* Retained Earnings: $19,400M\n\nTotal equity: $47,400M\n\nNow, let's divide the total debt by the total equity to get the debt-to-equity ratio:\n\nDebt-to-equity ratio = Total debt / Total equity\n=",
+          "base_extracted": "1.45",
+          "base_correct": true,
+          "base_latency_ms": 42489.5,
+          "finetuned_answer": "\nTo calculate the debt-to-equity ratio, we need to add up all the debt components and all the equity components of the company.\n\nDebt components:\n\n* Short-term Debt: $12,400M\n* Long-term Debt: $55,400M\n\nTotal debt: $67,800M\n\nEquity components:\n\n* Common Stock: $18,200M\n* Additional Paid-in Capital: $9,800M\n* Retained Earnings: $19,400M\n\nTotal equity: $47,400M\n\nNow, let's divide the total debt by the total equity to get the debt-to-equity ratio:\n\nDebt-to-equity ratio = Total debt / Total equity\n=",
+          "finetuned_extracted": "1.45",
+          "finetuned_correct": true,
+          "finetuned_latency_ms": 42559.8,
+          "rag_answer": "To calculate the debt-to-equity ratio, we need to add up all the debt components and all the equity components and then divide the total debt by the total equity.\n\nDebt Components:\n\n* Short-term Debt = $12,400M\n* Long-term Debt = $55,400M\n\nTotal Debt = $67,800M\n\nEquity Components:\n\n* Common Stock = $18,200M\n* Additional Paid-in Capital = $9,800M\n* Retained Earnings = $19,400M\n\nTotal Equity = $47,400M\n\nNow, let's calculate the debt-to-equity ratio:\n\nDebt-to-Equity Ratio = Total Debt / Total Equit",
+          "rag_extracted": "1.43",
+          "rag_correct": true,
+          "rag_latency_ms": 92847.9,
+          "hybrid_answer": "To calculate the debt-to-equity ratio, we need to add up all the debt and equity components of the company.\n\nDebt Components:\n\n* Short-term Debt = $12,400M\n* Long-term Debt = $55,400M\n\nTotal Debt = $67,800M\n\nEquity Components:\n\n* Common Stock = $18,200M\n* Additional Paid-in Capital = $9,800M\n* Retained Earnings = $19,400M\n\nTotal Equity = $47,400M\n\nNow, we divide the total debt by the total equity to get the debt-to-equity ratio:\n\nDebt-to-Equity Ratio = Total Debt / Total Equity\n= $67,800M / $47,",
+          "hybrid_extracted": "1.43",
+          "hybrid_correct": true,
+          "hybrid_latency_ms": 92198.3
+        },
+        {
+          "id": "fr05",
+          "question": "Calculate the operating cash flow ratio. First compute Operating Cash Flow = Net Income + D&A - Increase in AR + Increase in AP. Then divide by Current Liabilities.",
+          "expected": "12.51",
+          "category": "liquidity",
+          "base_answer": "\nGreat, let's get started! To calculate the operating cash flow ratio, we need to follow these steps:\n\n1. Compute Operating Cash Flow:\nOperating Cash Flow = Net Income + Depreciation & Amortization - Increase in Accounts Receivable + Increase in Accounts Payable\n\nOperating Cash Flow = $8,200M + $3,400M - $1,200M + $800M\n= $9,600M\n\n2. Divide Operating Cash Flow by Current Liabilities:\nOperating Cash Flow Ratio = Operating Cash Flow / Current Liabilities\n\nOperating Cash Flow Ratio = $9,600M / $89,",
+          "base_extracted": "10.7",
+          "base_correct": false,
+          "base_latency_ms": 42234.2,
+          "finetuned_answer": "\nTo calculate the operating cash flow ratio, we need to first compute the operating cash flow. Using the financial data provided:\n\nOperating Cash Flow = Net Income + Depreciation & Amortization - Increase in Accounts Receivable - Increase in Accounts Payable\n= $8,200M + $3,400M - $1,200M - $800M\n= $9,600M\n\nNext, we divide the operating cash flow by current liabilities:\n\nOperating Cash Flow Ratio = Operating Cash Flow / Current Liabilities\n= $9,600M / $89,500M\n= 0.107 or 10.7%\n\nTherefore, the ope",
+          "finetuned_extracted": "10.7",
+          "finetuned_correct": false,
+          "finetuned_latency_ms": 42739.6,
+          "rag_answer": "To calculate the operating cash flow ratio, we need to first compute the operating cash flow (OCF) using the provided data. OCF can be calculated as follows:\n\nOCF = Net Income + Depreciation & Amortization - Increase in Accounts Receivable - Increase in Accounts Payable\n\nUsing the given data, we get:\n\nOCF = $8,200M + $3,400M - $1,200M - $800M = $6,600M\n\nNext, we divide the OCF by Current Liabilities to calculate the operating cash flow ratio:\n\nOperating Cash Flow Ratio = OCF / Current Liabilitie",
+          "rag_extracted": "0.74",
+          "rag_correct": false,
+          "rag_latency_ms": 94261.1,
+          "hybrid_answer": "To calculate the operating cash flow ratio, we need to first compute Operating Cash Flow (OCF). We can do this by subtracting depreciation and amortization (D&A) from net income, and then adding the increases in accounts receivable (AR) and accounts payable (AP):\n\nOperating Cash Flow = Net Income + D&A - Increase in AR - Increase in AP\n= $8,200M + $3,400M - $1,200M - $800M\n= $9,600M\n\nNext, we divide the Operating Cash Flow by Current Liabilities:\n\nOperating Cash Flow Ratio = OCF / Current Liabil",
+          "hybrid_extracted": "10.7",
+          "hybrid_correct": false,
+          "hybrid_latency_ms": 90557.5
+        },
+        {
+          "id": "fr06",
+          "question": "Calculate the gross margin, operating margin, and net profit margin. Then compute the spread between gross margin and net margin (gross margin minus net margin) in percentage points.",
+          "expected": "26.32",
+          "category": "profitability",
+          "base_answer": "\nTo calculate the gross margin, operating margin, and net profit margin, we need to use the following formulas:\n\n1. Gross Margin = Revenue - Cost of Goods Sold / Revenue = $56,300M - $33,780M / $56,300M = 42.9%\n2. Operating Margin = Operating Income / Revenue = $8,450M / $56,300M = 15.1%\n3. Net Profit Margin = Net Income / Revenue = $2,568M / $56,300M = 4.6%\n\nTo calculate the spread between gross margin and net margin, we subtract the net margin from the gross margin:\n\nSpread = Gross Margin - Ne",
+          "base_extracted": "42.9",
+          "base_correct": false,
+          "base_latency_ms": 39049.8,
+          "finetuned_answer": "\nTo calculate the gross margin, operating margin, and net profit margin, we need to use the following formulas:\n\n1. Gross Margin = Revenue - Cost of Goods Sold / Revenue = $56,300M - $33,780M / $56,300M = 42.9%\n2. Operating Margin = Operating Income / Revenue = $8,450M / $56,300M = 15.1%\n3. Net Profit Margin = Net Income / Revenue = $2,568M / $56,300M = 4.6%\n\nNow, to calculate the spread between gross margin and net margin, we need to subtract the net margin from the gross margin:\n\nSpread = Gros",
+          "finetuned_extracted": "42.9",
+          "finetuned_correct": false,
+          "finetuned_latency_ms": 38181.5,
+          "rag_answer": "\nTo calculate the gross margin, operating margin, and net profit margin, we need to use the following formulas:\n\n1. Gross Margin = Revenue - Cost of Goods Sold / Revenue x 100\n2. Operating Margin = Operating Income / Revenue x 100\n3. Net Profit Margin = Net Income / Revenue x 100\n\nUsing the data provided in the question, we can calculate the gross margin, operating margin, and net profit margin as follows:\n\nGross Margin:\nRevenue = $56,300M\nCost of Goods Sold = $33,780M\nGross Margin = ($56,300M -",
+          "rag_extracted": "24.9",
+          "rag_correct": false,
+          "rag_latency_ms": 190996.0,
+          "hybrid_answer": "To calculate the gross margin, operating margin, and net profit margin, we need to first determine the revenue, cost of goods sold (COGS), operating expenses, interest expense, tax expense, and net income from the income statement.\n\nFrom the provided documents:\n\n1. Primary Data:\n\t* Revenue: $56,300M\n\t* Cost of Goods Sold: $33,780M\n\t* Operating Expenses: $8,450M\n\t* Interest Expense: $3,800M\n\t* Tax Expense: $2,568M\n\t* Net Income: $13,442M\n2. Glossary of Key Financial Ratios and Definitions:\n\t* Deb",
+          "hybrid_extracted": "15.0",
+          "hybrid_correct": false,
+          "hybrid_latency_ms": 211006.1
         }
       ]
     }
