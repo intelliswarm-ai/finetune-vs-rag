@@ -2,7 +2,7 @@ services:
 
   # Ollama -- runs Llama2-7B and FinQA-7B locally
   ollama:
-    image: ollama/ollama
+    image: ollama/ollama:latest
     container_name: ollama
     ports:
       - "11434:11434"

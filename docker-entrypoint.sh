@@ -77,44 +77,34 @@ for fname in adapter_files:
 
 print(f'Adapter files ready at {adapter_dir}')
 
-# Create Ollama model: base llama2 + FinQA LoRA adapter
+# Save Modelfile for CLI-based import (more reliable than API)
 modelfile = f'''FROM {base_model}
 ADAPTER /shared_models/finqa-adapter
 PARAMETER temperature 0.1
 PARAMETER num_ctx 4096
 '''
+with open('/shared_models/Modelfile', 'w') as f:
+    f.write(modelfile)
+print('Modelfile saved to /shared_models/Modelfile')
+" || echo "FinQA-7B adapter download failed. Check logs for details."
 
-print(f'Creating Ollama model \"{ft_model}\" = {base_model} + FinQA LoRA adapter...')
-print('This may take a few minutes (applying adapter weights)...')
-
-import urllib.request
-req = urllib.request.Request(
-    f'{ollama_host}/api/create',
-    data=json.dumps({
-        'name': ft_model,
-        'modelfile': modelfile,
-    }).encode(),
-    headers={'Content-Type': 'application/json'},
-    method='POST',
-)
-try:
-    with urllib.request.urlopen(req, timeout=1800) as resp:
-        for line in resp:
-            try:
-                status = json.loads(line.decode())
-                if 'status' in status:
-                    print(f'  {status[\"status\"]}')
-            except json.JSONDecodeError:
-                pass
-    print(f'Fine-tuned model \"{ft_model}\" created successfully!')
-except Exception as e:
-    print(f'ERROR creating model: {e}')
-    print('The demo will start but fine-tuned model calls may fail.')
-    print(f'Try manually: docker exec ollama ollama create {ft_model} -f /shared_models/Modelfile')
-    # Save Modelfile for manual import
-    with open('/shared_models/Modelfile', 'w') as f:
-        f.write(modelfile)
-" || echo "FinQA-7B import failed. Check logs for details."
+    # Use ollama CLI via the ollama container (more reliable than API for adapter conversion)
+    echo "Creating Ollama model '${FT_MODEL}' via CLI (applying LoRA adapter)..."
+    echo "This may take a few minutes..."
+    # Install ollama CLI in demo container to talk to the remote ollama server
+    OLLAMA_HOST="${OLLAMA}" curl -sf "${OLLAMA}/api/create" \
+        -d "{\"name\": \"${FT_MODEL}\", \"modelfile\": \"FROM ${MODEL}\nADAPTER /shared_models/finqa-adapter\nPARAMETER temperature 0.1\nPARAMETER num_ctx 4096\"}" \
+        --max-time 1800 | python3 -c "
+import sys, json
+for line in sys.stdin:
+    try:
+        d = json.loads(line)
+        if 'status' in d:
+            print(f'  {d[\"status\"]}')
+        if 'error' in d:
+            print(f'  ERROR: {d[\"error\"]}')
+    except: pass
+" || echo "FinQA-7B import failed. Try manually: docker exec ollama ollama create ${FT_MODEL} -f /shared_models/Modelfile"
 else
     echo "Fine-tuned model '${FT_MODEL}' already available."
 fi

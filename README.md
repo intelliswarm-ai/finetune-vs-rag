@@ -19,6 +19,31 @@ docker compose up --build
 
 That's it. FinBERT is pre-downloaded in the image - the demo starts instantly.
 
+## Quick Start (macOS)
+
+If you have Ollama installed natively (e.g. via `brew install ollama`), use the macOS script to avoid Docker port conflicts:
+
+```bash
+# 1. (Optional) Configure environment
+cp .env.example .env
+
+# 2. Run the all-in-one macOS script
+./run-macos.sh
+
+# 3. Open http://localhost:8501
+```
+
+The script automatically:
+- Starts Ollama if not already running
+- Pulls the base model (llama2)
+- Downloads and imports the FinQA-7B LoRA adapter
+- Creates a Python virtual environment and installs dependencies
+- Pre-downloads FinBERT, bert-base-uncased, and embedding models
+- Initializes the RAG engine
+- Launches Streamlit
+
+**Prerequisites:** `python3` and `ollama` (`brew install python ollama`)
+
 ## Quick Start (Local)
 
 ```bash

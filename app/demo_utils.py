@@ -483,13 +483,24 @@ def call_finetuned_model(question: str, table: str = "", context: str = "") -> L
                            model_name="unavailable", is_live=False)
     prompt = _build_finetuned_prompt(question, table, context)
     start = time.perf_counter()
-    resp = client.chat.completions.create(
-        model=FINETUNED_LLM_MODEL,
-        messages=[
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.1, max_tokens=800,
-    )
+    try:
+        resp = client.chat.completions.create(
+            model=FINETUNED_LLM_MODEL,
+            messages=[
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.1, max_tokens=800,
+        )
+    except Exception as e:
+        if "not found" in str(e).lower():
+            return LLMResponse(
+                answer=f"[Model '{FINETUNED_LLM_MODEL}' not available in Ollama. "
+                       f"Run: ollama create {FINETUNED_LLM_MODEL} to import the LoRA adapter.]",
+                latency_ms=0,
+                model_name=f"FinQA-7B (not loaded)",
+                is_live=False,
+            )
+        raise
     ms = (time.perf_counter() - start) * 1000
     return LLMResponse(
         answer=resp.choices[0].message.content,
@@ -516,13 +527,25 @@ def call_hybrid_model(question: str, table: str = "", context: str = "",
         retrieved_docs = result.documents
     prompt = _build_hybrid_prompt(question, table, context, retrieved_docs)
     start = time.perf_counter()
-    resp = client.chat.completions.create(
-        model=FINETUNED_LLM_MODEL,
-        messages=[
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.1, max_tokens=800,
-    )
+    try:
+        resp = client.chat.completions.create(
+            model=FINETUNED_LLM_MODEL,
+            messages=[
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.1, max_tokens=800,
+        )
+    except Exception as e:
+        if "not found" in str(e).lower():
+            return LLMResponse(
+                answer=f"[Model '{FINETUNED_LLM_MODEL}' not available in Ollama. "
+                       f"Run: ollama create {FINETUNED_LLM_MODEL} to import the LoRA adapter.]",
+                latency_ms=0,
+                model_name=f"FinQA-7B + RAG (not loaded)",
+                retrieved_context=retrieved_docs,
+                is_live=False,
+            )
+        raise
     ms = (time.perf_counter() - start) * 1000
     return LLMResponse(
         answer=resp.choices[0].message.content,
