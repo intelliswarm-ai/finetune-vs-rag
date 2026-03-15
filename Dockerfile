@@ -5,10 +5,11 @@ LABEL description="Fine-Tuning vs RAG: Live Demo with FinBERT, Ollama, and real 
 
 WORKDIR /app
 
-# System deps
+# System deps + Ollama CLI (needed for reliable LoRA adapter import)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    curl -fsSL https://ollama.com/install.sh | sh || true
 
 # Install PyTorch CPU-only (smaller than GPU version)
 RUN pip install --no-cache-dir \
