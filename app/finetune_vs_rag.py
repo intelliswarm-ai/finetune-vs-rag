@@ -20,7 +20,7 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main-header {
-        font-size: 2.5rem;
+        font-size: 3.5rem;
         font-weight: bold;
         color: #1f77b4;
         margin-bottom: 0.5rem;
@@ -52,8 +52,19 @@ st.markdown("""
 
 # Header
 st.markdown('<p class="main-header">Fine-Tuning vs RAG: Live Demo</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Interactive presentation and live comparison for financial AI</p>', unsafe_allow_html=True)
-st.markdown("[:material/code: GitHub Repository](https://github.com/intelliswarm-ai/finetune-vs-rag)")
+st.markdown(
+    '<div style="display:flex; align-items:center; gap:16px; margin-top:0.5rem;">'
+    '<img src="https://avatars.githubusercontent.com/u/197517755?s=200&v=4" width="36" '
+    'style="border-radius:50%;">'
+    '<span style="font-weight:600;">Powered by '
+    '<a href="https://github.com/intelliswarm-ai" target="_blank" '
+    'style="color:#0066cc; text-decoration:none;">intelliswarm.ai</a></span>'
+    '<span style="color:#ccc;">|</span>'
+    '<a href="https://github.com/intelliswarm-ai/finetune-vs-rag" target="_blank" '
+    'style="color:#0066cc; text-decoration:none;">GitHub Repository</a>'
+    '</div>',
+    unsafe_allow_html=True,
+)
 
 # Check demo status
 try:
@@ -201,13 +212,6 @@ with st.sidebar:
     st.page_link("pages/3_Sentiment_Analysis.py", label="Sentiment Analysis")
     st.page_link("pages/4_Benchmark_Results.py", label="Benchmark Results")
     st.page_link("pages/5_How_It_Works.py", label="How It Works")
-
-    st.divider()
-    st.markdown("**Live Query (own URL/tab):**")
-    st.page_link("pages/6_Live_Query.py", label="All Models Side-by-Side")
-    st.page_link("pages/7_Fine_Tuned.py", label="Fine-Tuned Only")
-    st.page_link("pages/8_RAG.py", label="RAG Only")
-    st.page_link("pages/9_Hybrid.py", label="Hybrid Only")
 
     st.divider()
 
