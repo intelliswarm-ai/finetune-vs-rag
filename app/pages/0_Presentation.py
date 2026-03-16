@@ -4,12 +4,33 @@ LLM Fine-Tuning: Maximizing AI for Specialized Tasks
 Navigate with Previous/Next buttons or keyboard shortcuts.
 """
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="Presentation - Fine-Tuning vs RAG",
     page_icon="FT",
     layout="wide",
 )
+
+
+def render_mermaid(diagram_code, height=500):
+    """Render a Mermaid diagram in a fixed-height iframe."""
+    html = f"""
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <style>
+        body {{ margin: 0; padding: 0; background: transparent; overflow: hidden; }}
+        .mermaid {{ display: flex; justify-content: center; align-items: start; }}
+        .mermaid svg {{ max-width: 100%; height: auto; }}
+    </style>
+    <div class="mermaid">
+    {diagram_code}
+    </div>
+    <script>
+        mermaid.initialize({{startOnLoad: true, theme: 'neutral', securityLevel: 'loose'}});
+    </script>
+    """
+    components.html(html, height=height, scrolling=False)
+
 
 # ---------------------------------------------------------------------------
 # Custom CSS for presentation look
@@ -320,28 +341,23 @@ def slide_rag_explained():
     """Slide 5: RAG Explained"""
     st.markdown('<p class="slide-title">RAG: Retrieval-Augmented Generation</p>', unsafe_allow_html=True)
 
-    st.markdown("""
-    ### How RAG Works
-    """)
+    st.markdown("### How RAG Works")
 
-    st.code("""
-    User Question
-         |
-         v
-    [1. EMBED] -----> Convert question to vector (embedding)
-         |
-         v
-    [2. RETRIEVE] --> Search vector database for similar documents
-         |
-         v
-    [3. AUGMENT] ---> Add retrieved documents to the prompt
-         |
-         v
-    [4. GENERATE] --> LLM generates answer using original question + retrieved context
-         |
-         v
-    Answer (with source references)
-    """, language=None)
+    render_mermaid("""
+    graph TD
+        A["User Question"] --> B["<b>1. EMBED</b><br/>Convert question to vector"]
+        B --> C["<b>2. RETRIEVE</b><br/>Search vector database<br/>for similar documents"]
+        C --> D["<b>3. AUGMENT</b><br/>Add retrieved documents<br/>to the prompt"]
+        D --> E["<b>4. GENERATE</b><br/>LLM generates answer using<br/>question + retrieved context"]
+        E --> F["<b>Answer</b><br/>with source references"]
+
+        style A fill:#f5f5f5,stroke:#424242,stroke-width:2px,color:#212121
+        style B fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1
+        style C fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1
+        style D fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1
+        style E fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+        style F fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#5d4037
+    """, height=550)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -446,28 +462,23 @@ def slide_finetuning_explained():
     """Slide 8: Fine-Tuning Explained"""
     st.markdown('<p class="slide-title">Fine-Tuning: Teaching Models New Skills</p>', unsafe_allow_html=True)
 
-    st.markdown("""
-    ### How Fine-Tuning Works
-    """)
+    st.markdown("### How Fine-Tuning Works")
 
-    st.code("""
-    Domain-Specific Dataset (e.g., 8,000+ financial Q&A pairs)
-         |
-         v
-    [1. PREPARE] -----> Format data as instruction/response pairs
-         |
-         v
-    [2. TRAIN] -------> Update model weights on your data
-         |                 (Full fine-tuning or parameter-efficient: LoRA/QLoRA)
-         v
-    [3. EVALUATE] ----> Test on held-out data, measure accuracy
-         |
-         v
-    [4. DEPLOY] ------> Use the specialized model for inference
-         |
-         v
-    Model with NEW capabilities (reasoning, calculations, domain expertise)
-    """, language=None)
+    render_mermaid("""
+    graph TD
+        A["Domain-Specific Dataset<br/><i>e.g. 8,000+ financial Q&A pairs</i>"] --> B["<b>1. PREPARE</b><br/>Format data as<br/>instruction / response pairs"]
+        B --> C["<b>2. TRAIN</b><br/>Update model weights on your data<br/><i>Full fine-tuning or LoRA / QLoRA</i>"]
+        C --> D["<b>3. EVALUATE</b><br/>Test on held-out data,<br/>measure accuracy"]
+        D --> E["<b>4. DEPLOY</b><br/>Use the specialized model<br/>for inference"]
+        E --> F["<b>Model with NEW capabilities</b><br/>Reasoning, calculations,<br/>domain expertise"]
+
+        style A fill:#f5f5f5,stroke:#424242,stroke-width:2px,color:#212121
+        style B fill:#fff3e0,stroke:#e65100,stroke-width:1px,color:#bf360c
+        style C fill:#fff3e0,stroke:#e65100,stroke-width:1px,color:#bf360c
+        style D fill:#fff3e0,stroke:#e65100,stroke-width:1px,color:#bf360c
+        style E fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+        style F fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+    """, height=550)
 
     st.markdown("""
     ### Key Difference from RAG
@@ -838,20 +849,23 @@ def slide_decision_framework():
     """Slide 13: Decision Framework"""
     st.markdown('<p class="slide-title">Decision Framework: When to Use What</p>', unsafe_allow_html=True)
 
-    st.code("""
-                          Does the task require
-                        NEW REASONING SKILLS?
-                       /                      \\
-                     YES                       NO
-                      |                         |
-            Does it need               Does it need
-           FRESH/DYNAMIC data?        FRESH/DYNAMIC data?
-            /           \\              /           \\
-          YES            NO          YES            NO
-           |              |           |              |
-        HYBRID      FINE-TUNE        RAG       PROMPT ENG.
-     (FT + RAG)    (Best accuracy) (Dynamic)   (Quick start)
-    """, language=None)
+    render_mermaid("""
+    graph TD
+        A["Does the task require<br/><b>NEW REASONING SKILLS?</b>"] -->|YES| B["Does it need<br/><b>FRESH / DYNAMIC data?</b>"]
+        A -->|NO| C["Does it need<br/><b>FRESH / DYNAMIC data?</b>"]
+        B -->|YES| D["<b>HYBRID</b><br/>Fine-Tune + RAG"]
+        B -->|NO| E["<b>FINE-TUNE</b><br/>Best accuracy"]
+        C -->|YES| F["<b>RAG</b><br/>Dynamic knowledge"]
+        C -->|NO| G["<b>PROMPT ENG.</b><br/>Quick start"]
+
+        style D fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+        style E fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+        style F fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c
+        style G fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c
+        style A fill:#fafafa,stroke:#424242,stroke-width:2px,color:#212121
+        style B fill:#fafafa,stroke:#424242,stroke-width:1px,color:#212121
+        style C fill:#fafafa,stroke:#424242,stroke-width:1px,color:#212121
+    """, height=420)
 
     st.markdown("---")
 
@@ -942,6 +956,15 @@ def slide_finetuning_tools():
         </div>
         """, unsafe_allow_html=True)
 
+        st.markdown("""
+        <div class="tool-card">
+        <strong>TRL (Transformer RL)</strong><br/>
+        SFT, DPO, and RLHF trainers. Integrates with PEFT for alignment tuning.<br/>
+        <em>Best for: Alignment tuning, RLHF, preference learning</em><br/>
+        <code>pip install trl</code>
+        </div>
+        """, unsafe_allow_html=True)
+
     with col2:
         st.markdown("### Cloud Platforms & APIs")
         st.markdown("""
@@ -978,27 +1001,188 @@ def slide_finetuning_tools():
         """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("### Monitoring & Experiment Tracking")
-    mcol1, mcol2, mcol3 = st.columns(3)
+    st.markdown("### Data, Eval & Monitoring")
+    mcol1, mcol2, mcol3, mcol4, mcol5 = st.columns(5)
     with mcol1:
         st.markdown("""
         <div class="tool-card">
         <strong>Weights & Biases (W&B)</strong><br/>
-        Track experiments, compare runs, visualize training metrics.
+        Experiment tracking, run comparison, model registry.
         </div>
         """, unsafe_allow_html=True)
     with mcol2:
         st.markdown("""
         <div class="tool-card">
         <strong>MLflow</strong><br/>
-        Open-source ML lifecycle management. Model registry, versioning.
+        Open-source ML lifecycle. Model versioning, deployment.
         </div>
         """, unsafe_allow_html=True)
     with mcol3:
         st.markdown("""
         <div class="tool-card">
-        <strong>TensorBoard</strong><br/>
-        Built-in with PyTorch/TensorFlow. Real-time training visualization.
+        <strong>Argilla / Label Studio</strong><br/>
+        Data labeling and annotation. Human-in-the-loop for training datasets.
+        </div>
+        """, unsafe_allow_html=True)
+    with mcol4:
+        st.markdown("""
+        <div class="tool-card">
+        <strong>LM Eval Harness</strong><br/>
+        Standard benchmark suite for LLMs. Measure fine-tuning impact rigorously.
+        </div>
+        """, unsafe_allow_html=True)
+    with mcol5:
+        st.markdown("""
+        <div class="tool-card">
+        <strong>Ollama / vLLM / TGI</strong><br/>
+        Local inference servers. GGUF, AWQ, GPTQ quantization for deployment.
+        </div>
+        """, unsafe_allow_html=True)
+
+
+def slide_finetune_local():
+    """Slide: How to Fine-Tune - Local Setup"""
+    st.markdown('<p class="slide-title">How to Fine-Tune: Local Setup</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">Step-by-step with Unsloth + QLoRA on a single GPU</p>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns([3, 2])
+
+    with col1:
+        st.markdown("""
+        <div class="blue-box">
+        <strong>Prerequisites</strong><br/>
+        - NVIDIA GPU with 8+ GB VRAM (RTX 3060/4060 or better)<br/>
+        - CUDA 11.8+ and Python 3.10+<br/>
+        - 20-50 GB free disk space for model weights<br/>
+        <code>pip install unsloth transformers peft trl datasets</code>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("**Python example: Unsloth + QLoRA workflow**")
+        st.code("""# 1. Load base model in 4-bit (QLoRA)
+from unsloth import FastLanguageModel
+model, tokenizer = FastLanguageModel.from_pretrained(
+    "meta-llama/Llama-2-7b-hf",
+    load_in_4bit=True,
+    max_seq_length=2048,
+)
+
+# 2. Add LoRA adapters (only ~1-5% of params trained)
+model = FastLanguageModel.get_peft_model(
+    model, r=16, lora_alpha=16,
+    target_modules=["q_proj","k_proj","v_proj","o_proj"],
+)
+
+# 3. Train with SFTTrainer
+from trl import SFTTrainer
+trainer = SFTTrainer(
+    model=model, train_dataset=dataset,
+    args=TrainingArguments(
+        num_train_epochs=3, per_device_train_batch_size=4,
+        output_dir="./output", learning_rate=2e-4,
+    ),
+)
+trainer.train()
+
+# 4. Save & merge adapter into base model
+model.save_pretrained_merged("./my-finetuned-model")""", language="python")
+
+    with col2:
+        st.markdown("""
+        <div class="green-box">
+        <strong>What Happens During Training</strong><br/>
+        - Base model weights are <strong>FROZEN</strong> (unchanged)<br/>
+        - Small adapter matrices (~50-200 MB) are trained<br/>
+        - Training takes 30 min - 4 hours for a 7B model<br/>
+        - GPU memory: ~6 GB (QLoRA) vs ~28 GB (full FT)<br/>
+        - Result: base model + adapter = specialized model
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("**Training Data Format (JSONL)**")
+        st.code("""{"instruction": "Calculate revenue growth",
+ "input": "2022: $500M, 2023: $580M",
+ "output": "Growth = (580-500)/500 = 16%"}
+
+# Typically 1,000 - 10,000 examples needed.""", language="json")
+
+        st.markdown("""
+        <div class="orange-box">
+        <strong>Tips</strong><br/>
+        - Start with QLoRA + Unsloth for fastest iteration<br/>
+        - Use Llama-2/3 7B or Mistral 7B as base model<br/>
+        - Evaluate on held-out test set after each epoch<br/>
+        - Export to GGUF for Ollama / llama.cpp deployment
+        </div>
+        """, unsafe_allow_html=True)
+
+
+def slide_finetune_aws():
+    """Slide: How to Fine-Tune - AWS"""
+    st.markdown('<p class="slide-title">How to Fine-Tune: AWS</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">SageMaker JumpStart + Bedrock Custom Models</p>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### Option A: Amazon SageMaker JumpStart")
+        st.code("""# 1. Select foundation model from JumpStart hub
+#    (Llama 2/3, Mistral, Falcon, etc.)
+
+import sagemaker
+from sagemaker.jumpstart.estimator import JumpStartEstimator
+
+estimator = JumpStartEstimator(
+    model_id="meta-textgeneration-llama-2-7b",
+    instance_type="ml.g5.2xlarge",  # 1x A10G 24GB
+    environment={
+        "instruction_tuned": "True",
+        "epoch": "3",
+        "per_device_train_batch_size": "4",
+        "lora_r": "16",
+    },
+)
+
+# 2. Point to training data in S3
+estimator.fit({
+    "training": "s3://my-bucket/training-data/"
+})
+
+# 3. Deploy endpoint
+predictor = estimator.deploy(
+    instance_type="ml.g5.xlarge"
+)""", language="python")
+
+    with col2:
+        st.markdown("### Option B: Bedrock Custom Models (No-Code)")
+        st.markdown("""
+        <div class="blue-box">
+        <strong>Fully Managed — 6 Steps</strong><br/>
+        1. Upload training data (JSONL) to S3<br/>
+        2. Console: Bedrock > Custom models > Create<br/>
+        3. Select base model (Llama, Titan, Cohere, etc.)<br/>
+        4. Configure hyperparameters (epochs, lr, batch)<br/>
+        5. Submit job — AWS handles GPU provisioning<br/>
+        6. Deploy as Provisioned Throughput endpoint<br/><br/>
+        No ML infrastructure to manage.
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="tool-card">
+        <strong>SageMaker vs Bedrock</strong><br/>
+        <strong>SageMaker:</strong> Full control, custom code, any model, BYO container<br/>
+        <strong>Bedrock:</strong> Managed, simpler, limited to supported models<br/>
+        <strong>Both:</strong> LoRA/QLoRA, S3 data, IAM security, VPC isolation
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="orange-box">
+        <strong>Typical AWS Costs</strong><br/>
+        Training: $2–50/hr (ml.g5.2xlarge ~$5/hr).<br/>
+        A 7B QLoRA job: ~$5–25 total.<br/>
+        Inference: ml.g5.xlarge ~$1.50/hr, or Bedrock per-token pricing.
         </div>
         """, unsafe_allow_html=True)
 
@@ -1076,6 +1260,178 @@ def slide_rag_tools():
         <strong>Sentence Transformers / OpenAI Embeddings / Cohere Embed</strong><br/>
         Convert text to vectors for retrieval. Choice affects search quality.<br/>
         <em>Tip: Use domain-specific embeddings for better retrieval accuracy</em>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### Embeddings, Eval & Cloud RAG")
+    ecol1, ecol2, ecol3, ecol4, ecol5 = st.columns(5)
+    with ecol1:
+        st.markdown("""
+        <div class="tool-card">
+        <strong>sentence-transformers</strong><br/>
+        Open-source embeddings (MiniLM, E5, BGE). Free, local, privacy-preserving.
+        </div>
+        """, unsafe_allow_html=True)
+    with ecol2:
+        st.markdown("""
+        <div class="tool-card">
+        <strong>OpenAI / Cohere / Voyage Embeddings</strong><br/>
+        API-based, high quality. text-embedding-3-large and similar. Best quality at a cost.
+        </div>
+        """, unsafe_allow_html=True)
+    with ecol3:
+        st.markdown("""
+        <div class="tool-card">
+        <strong>RAGAS</strong><br/>
+        Evaluate RAG pipelines: faithfulness, relevancy, context recall. Measure RAG quality.
+        </div>
+        """, unsafe_allow_html=True)
+    with ecol4:
+        st.markdown("""
+        <div class="tool-card">
+        <strong>AWS Bedrock Knowledge Bases</strong><br/>
+        Managed RAG. Auto-chunking, OpenSearch integration, Bedrock LLMs. Zero infrastructure.
+        </div>
+        """, unsafe_allow_html=True)
+    with ecol5:
+        st.markdown("""
+        <div class="tool-card">
+        <strong>Azure AI Search + OpenAI</strong><br/>
+        Enterprise search + GPT. Hybrid retrieval, RBAC. Best for Azure/Microsoft ecosystem.
+        </div>
+        """, unsafe_allow_html=True)
+
+
+def slide_rag_local():
+    """Slide: How to Build RAG - Local Setup"""
+    st.markdown('<p class="slide-title">How to Build RAG: Local Setup</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">Python + ChromaDB + sentence-transformers + any LLM</p>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns([3, 2])
+
+    with col1:
+        st.markdown("**Prerequisites**")
+        st.markdown("""
+        <div class="blue-box">
+        - Python 3.10+, no GPU required for retrieval<br/>
+        - GPU optional (for local LLM via Ollama/vLLM)<br/>
+        - Or use API: OpenAI / Anthropic / Groq for generation<br/>
+        - Storage: ~1 GB per 100K document chunks<br/>
+        <code>pip install chromadb sentence-transformers langchain</code>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("**Python code: ChromaDB + sentence-transformers + LangChain**")
+        st.code("""# 1. Load & chunk your documents
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=500, chunk_overlap=50
+)
+chunks = splitter.split_documents(docs)
+
+# 2. Create embeddings & vector store
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import Chroma
+
+embeddings = HuggingFaceEmbeddings(
+    model_name="all-MiniLM-L6-v2"  # 384-dim
+)
+vectorstore = Chroma.from_documents(
+    chunks, embeddings, persist_directory="./db"
+)
+
+# 3. Query: embed question -> retrieve -> generate
+results = vectorstore.similarity_search(
+    "What was revenue growth?", k=5
+)
+context = "\\n".join(r.page_content for r in results)
+answer = llm(f"{context}\\n\\nQ: {question}")""", language="python")
+
+    with col2:
+        st.markdown("""
+        <div class="green-box">
+        <strong>Architecture</strong><br/>
+        Documents → Chunking (500 chars) → Embedding<br/>
+        → ChromaDB (cosine similarity) → Top-K retrieval<br/>
+        → LLM prompt = question + retrieved chunks<br/>
+        → Answer with source references
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="orange-box">
+        <strong>Tuning Tips</strong><br/>
+        - <strong>Chunk size:</strong> 300–1000 chars — test what works best<br/>
+        - <strong>Overlap:</strong> 10–20% of chunk size avoids split entities<br/>
+        - <strong>Top-K:</strong> 3–5 docs balances context vs noise<br/>
+        - <strong>Embedding model:</strong> try domain-specific ones for better accuracy<br/>
+        - <strong>Re-ranking:</strong> cross-encoder boosts precision significantly
+        </div>
+        """, unsafe_allow_html=True)
+
+
+def slide_rag_aws():
+    """Slide: How to Build RAG - AWS"""
+    st.markdown('<p class="slide-title">How to Build RAG: AWS</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">Bedrock Knowledge Bases + OpenSearch Serverless</p>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### Option A: Amazon Bedrock Knowledge Bases (Managed)")
+        st.markdown("""
+        <div class="blue-box">
+        <strong>Fully Managed RAG in 5 Steps</strong><br/>
+        1. Create S3 bucket with your documents<br/>
+        &nbsp;&nbsp;&nbsp;(PDF, TXT, CSV, HTML, DOCX supported)<br/><br/>
+        2. Console: Bedrock > Knowledge bases > Create<br/>
+        &nbsp;&nbsp;&nbsp;- Select embedding model (Titan, Cohere)<br/>
+        &nbsp;&nbsp;&nbsp;- Select vector store (auto-creates OpenSearch)<br/><br/>
+        3. Sync data source (automatic chunking & embedding)<br/><br/>
+        4. Query via RetrieveAndGenerate API
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.code("""response = bedrock.retrieve_and_generate(
+    input={'text': 'What was revenue growth?'},
+    knowledgeBaseId='KB_ID',
+    modelArn='anthropic.claude-3-sonnet'
+)
+# Response includes answer + source citations""", language="python")
+
+    with col2:
+        st.markdown("### Option B: Custom RAG on AWS")
+        st.markdown("""
+        <div class="green-box">
+        <strong>Build Your Own with AWS Services</strong><br/>
+        <strong>Embedding:</strong> Bedrock Embeddings API or SageMaker<br/>
+        <strong>Vector DB:</strong> OpenSearch Serverless (vector engine)<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;or Amazon Aurora pgvector<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;or self-hosted Qdrant on ECS/EKS<br/>
+        <strong>Orchestration:</strong> Lambda + Step Functions<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;or LangChain on ECS/Fargate<br/>
+        <strong>Generation:</strong> Bedrock (Claude, Llama, Titan)<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;or SageMaker endpoint
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="tool-card">
+        <strong>Managed vs Custom</strong><br/>
+        <strong>Bedrock KB:</strong> Zero infra, auto-sync, simple API, fast start<br/>
+        <strong>Custom:</strong> Full control, any vector DB, custom chunking,
+        advanced retrieval (hybrid search, re-ranking, filters)
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="orange-box">
+        <strong>Typical AWS Costs</strong><br/>
+        Bedrock KB: Embedding ~$0.10/1M tokens, generation per-token,
+        OpenSearch from $0.24/hr (serverless OCU)<br/>
+        Storage: S3 ~$0.023/GB/month<br/>
+        Estimated total for small RAG system: <strong>$50–200/month</strong>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1199,30 +1555,24 @@ def slide_hybrid():
     """Slide 18: The Hybrid Approach"""
     st.markdown('<p class="slide-title">The Hybrid Approach: Best of Both Worlds</p>', unsafe_allow_html=True)
 
-    st.code("""
-    User Question + Financial Table
-         |
-         +---------+-----------+
-         |                     |
-         v                     v
-    [RETRIEVE]            [FINE-TUNED
-     from Vector DB]       MODEL PROCESSES
-         |                 TABLE DATA]
-         v                     |
-    Retrieved Context          |
-         |                     |
-         +--------+   +-------+
-                  |   |
-                  v   v
-            [FINE-TUNED MODEL]
-            [+ Retrieved Context]
-                    |
-                    v
-            Answer with:
-            - Domain reasoning (from fine-tuning)
-            - Fresh context (from RAG)
-            - Source citations
-    """, language=None)
+    render_mermaid("""
+    graph TD
+        A["User Question + Financial Table"] --> B["Embedding Model<br/><i>all-MiniLM-L6-v2</i>"]
+        A --> C["Primary Context<br/><i>Table + Text</i>"]
+        B --> D["Vector Store<br/><i>ChromaDB</i>"]
+        D --> E["Retrieved Documents<br/><i>Top-K similar chunks</i>"]
+        E --> F["<b>FinQA-7B-Instruct</b><br/>Fine-tuned model"]
+        C --> F
+        F --> G["<b>Answer</b><br/>Domain reasoning + Fresh context + Citations"]
+
+        style A fill:#f5f5f5,stroke:#424242,stroke-width:2px,color:#212121
+        style D fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1
+        style F fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+        style G fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#5d4037
+        style B fill:#fafafa,stroke:#9e9e9e,color:#424242
+        style C fill:#fafafa,stroke:#9e9e9e,color:#424242
+        style E fill:#fafafa,stroke:#9e9e9e,color:#424242
+    """, height=550)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -1245,6 +1595,7 @@ def slide_hybrid():
     st.success("""
     **Result:** The hybrid approach achieves **65.8% accuracy** on FinQA, compared to
     61.2% for fine-tuning alone and 15.3% for RAG alone.
+    **Sentiment:** 75% hybrid vs 70% FT-only vs 65% RAG-only.
     """)
 
 
@@ -1305,18 +1656,25 @@ def slide_key_takeaways():
     st.markdown("")
 
     takeaways = [
-        "Fine-tuning is essential when you need specialized reasoning, calculations, or consistent behavior",
-        "RAG is valuable for dynamic knowledge, source citations, and quick deployment",
-        "The best production systems often combine both approaches (hybrid)",
-        "Modern tools (Unsloth, LoRA, QLoRA) make fine-tuning accessible without massive infrastructure",
-        "Start with RAG for quick wins, add fine-tuning where accuracy gaps appear",
-        "The cost of fine-tuning is an investment - higher accuracy means fewer costly errors",
+        ("Fine-tuning is essential for specialized reasoning",
+         "When your task requires domain-specific calculations, consistent output formats, or learned reasoning patterns, fine-tuning delivers 61%+ accuracy vs 15% for RAG on tasks like FinQA."),
+        ("RAG is valuable for dynamic knowledge",
+         "When your data changes frequently, you need source citations for audit/compliance, or you need to deploy quickly without training data — RAG is the right first choice."),
+        ("Best production systems combine both (hybrid)",
+         "The hybrid approach achieves 65.8% on FinQA vs 61.2% FT-only vs 15.3% RAG-only. Fine-tuning provides the reasoning skills; RAG provides fresh, citable context."),
+        ("Modern tools make fine-tuning accessible",
+         "Unsloth + QLoRA lets you fine-tune a 7B model on a consumer GPU (8 GB VRAM) in under 4 hours. You no longer need a data center or an ML PhD to get started."),
+        ("Start with RAG, add fine-tuning where gaps appear",
+         "RAG is faster and cheaper to deploy. Use it first. The queries where RAG fails or gives low-confidence answers become your training data for fine-tuning."),
+        ("The cost of fine-tuning is an investment",
+         "A QLoRA fine-tuning job on AWS costs $5–25. Higher accuracy means fewer wrong answers, fewer human review cycles, and faster responses. Break-even often within weeks at production volume."),
     ]
 
-    for i, takeaway in enumerate(takeaways, 1):
+    for i, (title, desc) in enumerate(takeaways, 1):
         st.markdown(f"""
         <div class="green-box">
-        <strong>{i}.</strong> {takeaway}
+        <strong>{i}. {title}</strong><br/>
+        {desc}
         </div>
         """, unsafe_allow_html=True)
 
@@ -1386,7 +1744,11 @@ SLIDES = [
     ("When RAG Falls Short", slide_rag_falls_short),
     ("Decision Framework", slide_decision_framework),
     ("Fine-Tuning Tools", slide_finetuning_tools),
+    ("Fine-Tune: Local Setup", slide_finetune_local),
+    ("Fine-Tune: AWS", slide_finetune_aws),
     ("RAG Tools", slide_rag_tools),
+    ("RAG: Local Setup", slide_rag_local),
+    ("RAG: AWS", slide_rag_aws),
     ("Data & Evaluation Tools", slide_data_preparation_tools),
     ("Real-World Use Cases", slide_use_cases),
     ("The Hybrid Approach", slide_hybrid),

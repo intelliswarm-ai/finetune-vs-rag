@@ -56,11 +56,6 @@ with st.sidebar:
         else:
             st.error(f"[OFFLINE] {k}")
 
-    st.divider()
-    st.markdown("**Open in separate tabs:**")
-    st.page_link("pages/7_Fine_Tuned.py", label="Fine-Tuned (own tab)")
-    st.page_link("pages/8_RAG.py", label="RAG (own tab)")
-    st.page_link("pages/9_Hybrid.py", label="Hybrid (own tab)")
 
 # Input form
 with st.form("query_form"):

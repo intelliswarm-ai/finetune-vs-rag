@@ -1,35 +1,219 @@
 """
 How It Works - Architecture Explainer
-Technical overview of the three approaches
+Technical overview of the three experiments and their approaches
 """
 import streamlit as st
 
 st.set_page_config(page_title="How It Works", page_icon="FT", layout="wide")
 
 st.title("How It Works")
-st.markdown("Technical architecture of Fine-Tuned, RAG, and Hybrid approaches.")
+st.markdown("Technical architecture behind each of the three benchmark experiments.")
 
-# Three columns for architectures
-tab1, tab2, tab3 = st.tabs(["Fine-Tuned", "RAG", "Hybrid"])
+# ==========================================================================
+# Experiment 1: BERT 110M Sentiment
+# ==========================================================================
+st.header("Experiment 1: BERT 110M -- Sentiment Classification")
+st.caption("Architecture: BERT-base-uncased (110M parameters)")
 
-with tab1:
-    st.subheader("Fine-Tuned Model Architecture")
+tab1a, tab1b, tab1c, tab1d = st.tabs(
+    ["Base BERT", "FinBERT (Fine-Tuned)", "BERT + RAG", "FinBERT + RAG (Hybrid)"]
+)
 
+with tab1a:
+    st.subheader("Base BERT -- No Fine-Tuning, No RAG")
     st.markdown("""
     ```
     ┌──────────────────────────────────────────────────────────────┐
-    │                    FINE-TUNED APPROACH                       │
+    │                  BASE BERT APPROACH                          │
     ├──────────────────────────────────────────────────────────────┤
     │                                                              │
-    │  Input: Table + Text + Question                              │
+    │  Input: Financial sentence                                   │
+    │         ↓                                                    │
+    │  ┌──────────────────────────────────────────────┐            │
+    │  │        bert-base-uncased (110M params)       │            │
+    │  │                                              │            │
+    │  │  • General English language model            │            │
+    │  │  • NOT trained on financial text             │            │
+    │  │  • Assigns logits to 3 classes               │            │
+    │  └──────────────────────────────────────────────┘            │
+    │         ↓                                                    │
+    │  Output: positive / negative / neutral + confidence          │
+    │                                                              │
+    └──────────────────────────────────────────────────────────────┘
+    ```
+
+    **Key Characteristics:**
+    - **Generic model** -- no financial domain knowledge
+    - **Fast inference** -- single forward pass (~5ms)
+    - **Struggles with jargon** -- e.g. "headwinds", "margin compression"
+    - **Baseline** -- this is what we compare against
+    """)
+
+with tab1b:
+    st.subheader("FinBERT -- Fine-Tuned on Financial Text")
+    st.markdown("""
+    ```
+    ┌──────────────────────────────────────────────────────────────┐
+    │                 FINBERT (FINE-TUNED) APPROACH                │
+    ├──────────────────────────────────────────────────────────────┤
+    │                                                              │
+    │  Input: Financial sentence                                   │
+    │         ↓                                                    │
+    │  ┌──────────────────────────────────────────────┐            │
+    │  │         ProsusAI/finbert (110M params)       │            │
+    │  │  (Fine-tuned on Financial PhraseBank)        │            │
+    │  │                                              │            │
+    │  │  • Learned financial sentiment patterns      │            │
+    │  │  • Understands domain jargon                 │            │
+    │  │  • Knows "declining cost ratio" = positive   │            │
+    │  └──────────────────────────────────────────────┘            │
+    │         ↓                                                    │
+    │  Output: positive / negative / neutral + confidence          │
+    │                                                              │
+    └──────────────────────────────────────────────────────────────┘
+    ```
+
+    **Key Characteristics:**
+    - **Domain expertise baked in** -- all knowledge is in model weights
+    - **Fast inference** -- single forward pass (~5ms)
+    - **Handles domain inversions** -- "declining cost-to-income" = positive
+    - **Same architecture** as Base BERT, different weights
+
+    **Training Data:**
+    - Financial PhraseBank: ~5,000 financial sentences
+    - Labeled by financial analysts for sentiment
+    """)
+
+with tab1c:
+    st.subheader("BERT + RAG -- Retrieval-Augmented Voting")
+    st.markdown("""
+    ```
+    ┌──────────────────────────────────────────────────────────────┐
+    │                  BERT + RAG APPROACH                         │
+    ├──────────────────────────────────────────────────────────────┤
+    │                                                              │
+    │  Input: Financial sentence                                   │
+    │         ↓                                                    │
+    │  ┌─────────────────────┐                                     │
+    │  │   Embedding Model   │  (all-MiniLM-L6-v2)                 │
+    │  └─────────────────────┘                                     │
+    │         ↓                                                    │
+    │  ┌─────────────────────┐                                     │
+    │  │    Vector Store     │  (ChromaDB)                         │
+    │  │  Similar financial  │  sentences with known labels        │
+    │  └─────────────────────┘                                     │
+    │         ↓ (Top-K similar examples)                           │
+    │  ┌─────────────────────────────────────────┐                 │
+    │  │       Majority Vote                     │                 │
+    │  │  Labels of retrieved similar sentences  │                 │
+    │  └─────────────────────────────────────────┘                 │
+    │         ↓                                                    │
+    │  Output: positive / negative / neutral + confidence          │
+    │                                                              │
+    └──────────────────────────────────────────────────────────────┘
+    ```
+
+    **Key Characteristics:**
+    - **No fine-tuning needed** -- uses base BERT embeddings + retrieval
+    - **Dynamic knowledge** -- add new labeled examples anytime
+    - **Majority voting** -- sentiment of nearest neighbors decides
+    - **Slower** -- retrieval adds latency (~15ms)
+    """)
+
+with tab1d:
+    st.subheader("FinBERT + RAG -- Hybrid Approach")
+    st.markdown("""
+    ```
+    ┌──────────────────────────────────────────────────────────────┐
+    │               FINBERT + RAG (HYBRID) APPROACH                │
+    ├──────────────────────────────────────────────────────────────┤
+    │                                                              │
+    │  Input: Financial sentence                                   │
+    │         ↓                          ↓                         │
+    │  ┌──────────────────┐    ┌─────────────────────┐             │
+    │  │     FinBERT      │    │   Embedding Model   │             │
+    │  │  (fine-tuned     │    │  + Vector Store     │             │
+    │  │   prediction)    │    │  (retrieved labels) │             │
+    │  └──────────────────┘    └─────────────────────┘             │
+    │         ↓                          ↓                         │
+    │         └──────────┬───────────────┘                         │
+    │                    ↓                                         │
+    │  ┌──────────────────────────────────────────────┐            │
+    │  │          Weighted Combination                │            │
+    │  │  FinBERT prediction + RAG neighbor vote      │            │
+    │  └──────────────────────────────────────────────┘            │
+    │         ↓                                                    │
+    │  Output: positive / negative / neutral + confidence          │
+    │                                                              │
+    └──────────────────────────────────────────────────────────────┘
+    ```
+
+    **Key Characteristics:**
+    - **Best of both** -- domain expertise + retrieval evidence
+    - **Weighted decision** -- FinBERT confidence + neighbor agreement
+    - **Medium latency** -- FinBERT pass + retrieval (~20ms)
+    - **Robust** -- fallback when either approach is uncertain
+    """)
+
+st.divider()
+
+# ==========================================================================
+# Experiment 2: Llama2 7B Numerical Reasoning
+# ==========================================================================
+st.header("Experiment 2: Llama2 7B -- Numerical Reasoning")
+st.caption("Architecture: Llama2-7B (7B parameters) -- 5 multi-step calculation tasks")
+
+tab2a, tab2b, tab2c, tab2d = st.tabs(
+    ["Base Llama2-7B", "FinQA-7B (Fine-Tuned)", "Llama2-7B + RAG", "FinQA-7B + RAG (Hybrid)"]
+)
+
+with tab2a:
+    st.subheader("Base Llama2-7B -- General-Purpose LLM")
+    st.markdown("""
+    ```
+    ┌──────────────────────────────────────────────────────────────┐
+    │                  BASE LLAMA2-7B APPROACH                     │
+    ├──────────────────────────────────────────────────────────────┤
+    │                                                              │
+    │  Input: Table + Context + Question                           │
+    │         ↓                                                    │
+    │  ┌──────────────────────────────────────────────┐            │
+    │  │           Llama2-7B (base model)             │            │
+    │  │                                              │            │
+    │  │  • General language model                    │            │
+    │  │  • NOT trained for financial math            │            │
+    │  │  • Generic prompt                            │            │
+    │  └──────────────────────────────────────────────┘            │
+    │         ↓                                                    │
+    │  Output: Attempted reasoning + Answer (often wrong)          │
+    │                                                              │
+    └──────────────────────────────────────────────────────────────┘
+    ```
+
+    **Key Characteristics:**
+    - **No domain training** -- relies on general pre-training
+    - **Struggles with calculations** -- often hallucinates numbers
+    - **Baseline** -- demonstrates why specialization matters
+    """)
+
+with tab2b:
+    st.subheader("FinQA-7B -- Fine-Tuned for Financial Q&A")
+    st.markdown("""
+    ```
+    ┌──────────────────────────────────────────────────────────────┐
+    │                    FINQA-7B APPROACH                         │
+    ├──────────────────────────────────────────────────────────────┤
+    │                                                              │
+    │  Input: Table + Context + Question                           │
     │         ↓                                                    │
     │  ┌──────────────────────────────────────────────┐            │
     │  │           FinQA-7B-Instruct                  │            │
-    │  │  (Pre-trained on 8,281 financial Q&A pairs)  │            │
+    │  │  (Llama2-7B + LoRA adapter fine-tuned on     │            │
+    │  │   8,281 financial Q&A pairs from FinQA)      │            │
     │  │                                              │            │
     │  │  • Learned numerical reasoning               │            │
     │  │  • Understands financial tables              │            │
-    │  │  • Can perform calculations                  │            │
+    │  │  • Can perform multi-step calculations       │            │
     │  └──────────────────────────────────────────────┘            │
     │         ↓                                                    │
     │  Output: Step-by-step reasoning + Answer                     │
@@ -38,26 +222,25 @@ with tab1:
     ```
 
     **Key Characteristics:**
-    - **No retrieval step** - all knowledge is in model weights
-    - **Fast inference** - single forward pass (~200ms)
-    - **Learned reasoning** - can actually compute answers
-    - **Consistent format** - trained for structured output
+    - **Domain expertise in weights** -- learned from 8,281 Q&A pairs
+    - **LoRA adapter** -- only ~128MB on top of base Llama2-7B
+    - **Can compute** -- trained to perform financial calculations
+    - **Consistent output** -- trained for structured reasoning
 
     **Training Data:**
-    - FinQA dataset: 8,281 Q&A pairs from SEC filings
-    - Each example includes table, text, question, and reasoning program
+    - FinQA dataset: 8,281 Q&A pairs from SEC filings (IBM Research)
+    - Each example: table + text + question + reasoning program
     """)
 
-with tab2:
-    st.subheader("RAG Architecture")
-
+with tab2c:
+    st.subheader("Llama2-7B + RAG -- Retrieval-Augmented Generation")
     st.markdown("""
     ```
     ┌─────────────────────────────────────────────────────────────┐
-    │                      RAG APPROACH                           │
+    │                   LLAMA2 + RAG APPROACH                     │
     ├─────────────────────────────────────────────────────────────┤
     │                                                             │
-    │  Input: Question                                            │
+    │  Input: Table + Context + Question                          │
     │         ↓                                                   │
     │  ┌─────────────────────┐                                    │
     │  │   Embedding Model   │  (all-MiniLM-L6-v2)                │
@@ -65,15 +248,13 @@ with tab2:
     │         ↓                                                   │
     │  ┌─────────────────────┐                                    │
     │  │    Vector Store     │  (ChromaDB)                        │
-    │  │  ┌───┐ ┌───┐ ┌───┐  │  100+ SEC filing chunks            │
-    │  │  │ • │ │ • │ │ • │  │                                    │
-    │  │  └───┘ └───┘ └───┘  │                                    │
+    │  │  SEC filing chunks  │  + financial formulas              │
     │  └─────────────────────┘                                    │
     │         ↓ (Top-K similar docs)                              │
-    │  ┌─────────────────────┐                                    │
-    │  │   Mistral-7B-Inst   │  General-purpose LLM               │
-    │  │   + Retrieved Docs  │                                    │
-    │  └─────────────────────┘                                    │
+    │  ┌─────────────────────────────────────────────┐            │
+    │  │   Llama2-7B (base) + Retrieved Documents    │            │
+    │  │   General LLM with added context            │            │
+    │  └─────────────────────────────────────────────┘            │
     │         ↓                                                   │
     │  Output: Generated answer (may struggle with math)          │
     │                                                             │
@@ -81,20 +262,19 @@ with tab2:
     ```
 
     **Key Characteristics:**
-    - **Two-step process** - retrieve then generate
-    - **Dynamic knowledge** - can access fresh documents
-    - **Slower inference** - retrieval adds latency (~800ms)
-    - **Cannot compute** - LLM not trained for numerical reasoning
+    - **Two-step process** -- retrieve relevant docs, then generate
+    - **Dynamic knowledge** -- can access fresh documents
+    - **Slower inference** -- retrieval adds latency
+    - **Cannot compute well** -- base LLM not trained for math
 
     **Knowledge Base:**
     - SEC 10-K filings (sampled for demo)
     - Financial glossary and formulas
-    - Embedding dimension: 384
+    - 24 chunks indexed, embedding dimension: 384
     """)
 
-with tab3:
-    st.subheader("Hybrid Architecture")
-
+with tab2d:
+    st.subheader("FinQA-7B + RAG -- Hybrid Approach")
     st.markdown("""
     ```
     ┌─────────────────────────────────────────────────────────────┐
@@ -102,7 +282,7 @@ with tab3:
     │              (Best of Both Worlds)                          │
     ├─────────────────────────────────────────────────────────────┤
     │                                                             │
-    │  Input: Table + Text + Question                             │
+    │  Input: Table + Context + Question                          │
     │         ↓                          ↓                        │
     │  ┌─────────────────────┐   ┌─────────────────────┐          │
     │  │   Embedding Model   │   │  Primary Context    │          │
@@ -130,19 +310,40 @@ with tab3:
     ```
 
     **Key Characteristics:**
-    - **Best accuracy** - combines domain expertise with context
-    - **Medium latency** - retrieval + specialized generation (~450ms)
-    - **Can compute** - uses fine-tuned model for generation
-    - **Context-aware** - can reference retrieved information
-
-    **Use Case:**
-    Ideal for production systems where accuracy is paramount and
-    you need both computational ability and access to specific documents.
+    - **Best accuracy** -- combines domain expertise with context
+    - **Can compute** -- uses fine-tuned model for generation
+    - **Context-aware** -- can reference retrieved information
+    - **Higher latency** -- retrieval + specialized generation
     """)
 
 st.divider()
 
-# When to use which
+# ==========================================================================
+# Experiment 3: Llama2 7B Financial Ratios
+# ==========================================================================
+st.header("Experiment 3: Llama2 7B -- Financial Ratios")
+st.caption("Architecture: Same as Experiment 2 -- 8 complex multi-step ratio calculations")
+
+st.markdown("""
+This experiment uses the **same four approaches** as Experiment 2 (Base Llama2-7B, FinQA-7B,
+Llama2-7B + RAG, FinQA-7B + RAG) but on harder tasks:
+
+| Aspect | Experiment 2 (Numerical) | Experiment 3 (Financial Ratios) |
+|---|---|---|
+| **Test cases** | 5 cases | 8 cases |
+| **Complexity** | Single/multi-step arithmetic | Multi-step ratio decomposition |
+| **Examples** | % change, D/E ratio | DuPont ROE, CAGR, sustainable growth rate |
+| **Categories** | single_step, multi_step | profitability, efficiency, liquidity, leverage, shareholder |
+| **Why separate** | Tests basic math ability | Tests whether the model can chain multiple formulas |
+
+The architectural diagrams are identical to Experiment 2 -- the difference is in what we ask each model to compute.
+""")
+
+st.divider()
+
+# ==========================================================================
+# Decision Matrix
+# ==========================================================================
 st.subheader("Decision Matrix: When to Use Each Approach")
 
 col1, col2, col3 = st.columns(3)
@@ -186,27 +387,30 @@ tech_col1, tech_col2 = st.columns(2)
 with tech_col1:
     st.markdown("""
     **Models:**
-    - `truocpham/FinQA-7B-Instruct` - Fine-tuned for numerical reasoning
-    - `ProsusAI/finbert` - Financial sentiment classification
-    - `mistralai/Mistral-7B-Instruct-v0.2` - Base model for RAG
+    - `ProsusAI/finbert` -- Fine-tuned BERT for sentiment (110M)
+    - `bert-base-uncased` -- Base BERT baseline (110M)
+    - `truocpham/FinQA-7B-Instruct` -- Fine-tuned Llama2 for financial Q&A (7B)
+    - `llama2` -- Base Llama2 via Ollama (7B)
 
     **Frameworks:**
-    - PyTorch + Transformers
-    - LangChain + ChromaDB
-    - Streamlit
+    - PyTorch + Transformers (BERT models)
+    - Ollama (Llama2 inference)
+    - ChromaDB + sentence-transformers (RAG)
+    - Streamlit (UI)
     """)
 
 with tech_col2:
     st.markdown("""
     **Datasets:**
     - FinQA: 8,281 Q&A pairs (IBM Research)
-    - Financial PhraseBank: 5,000 sentences
-    - SEC 10-K Filings (PleIAs/SEC)
+    - Financial PhraseBank: ~5,000 sentences
+    - SEC 10-K Filings (sample documents for RAG)
 
-    **Hardware:**
-    - GPU recommended (NVIDIA 8GB+ VRAM)
-    - 4-bit quantization for memory efficiency
-    - Can run on CPU (slower)
+    **Infrastructure:**
+    - Docker Compose (demo + Ollama containers)
+    - GPU recommended for Llama2 (can run on CPU)
+    - FinBERT runs on CPU (~5ms/query)
+    - Embedding: all-MiniLM-L6-v2 (384 dimensions)
     """)
 
 st.divider()

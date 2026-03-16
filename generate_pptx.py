@@ -4,6 +4,8 @@ Run: python3 generate_pptx.py
 Output: presentation.pptx
 """
 import json
+import subprocess
+import tempfile
 from pathlib import Path
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
@@ -11,6 +13,98 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.chart import XL_CHART_TYPE
 from pptx.chart.data import CategoryChartData
+
+
+# ---------------------------------------------------------------------------
+# Mermaid diagram rendering
+# ---------------------------------------------------------------------------
+MERMAID_DECISION_FRAMEWORK = """\
+graph TD
+    A["Does the task require<br/><b>NEW REASONING SKILLS?</b>"] -->|YES| B["Does it need<br/><b>FRESH / DYNAMIC data?</b>"]
+    A -->|NO| C["Does it need<br/><b>FRESH / DYNAMIC data?</b>"]
+    B -->|YES| D["HYBRID<br/>Fine-Tune + RAG"]
+    B -->|NO| E["FINE-TUNE<br/>Best accuracy"]
+    C -->|YES| F["RAG<br/>Dynamic knowledge"]
+    C -->|NO| G["PROMPT ENG.<br/>Quick start"]
+
+    style D fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+    style E fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+    style F fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c
+    style G fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c
+    style A fill:#fafafa,stroke:#424242,stroke-width:2px,color:#212121
+    style B fill:#fafafa,stroke:#424242,stroke-width:1px,color:#212121
+    style C fill:#fafafa,stroke:#424242,stroke-width:1px,color:#212121
+"""
+
+MERMAID_HYBRID_ARCHITECTURE = """\
+graph TD
+    A["User Question + Financial Table"] --> B["Embedding Model<br/><i>all-MiniLM-L6-v2</i>"]
+    A --> C["Primary Context<br/><i>Table + Text</i>"]
+    B --> D["Vector Store<br/><i>ChromaDB</i>"]
+    D --> E["Retrieved Documents<br/><i>Top-K similar chunks</i>"]
+    E --> F["<b>FinQA-7B-Instruct</b><br/>Fine-tuned model"]
+    C --> F
+    F --> G["<b>Answer</b><br/>Domain reasoning + Fresh context + Citations"]
+
+    style A fill:#f5f5f5,stroke:#424242,stroke-width:2px,color:#212121
+    style D fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1
+    style F fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+    style G fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#5d4037
+    style B fill:#fafafa,stroke:#9e9e9e,color:#424242
+    style C fill:#fafafa,stroke:#9e9e9e,color:#424242
+    style E fill:#fafafa,stroke:#9e9e9e,color:#424242
+"""
+
+
+def render_mermaid_png(mermaid_code: str, output_path: str, width: int = 1600) -> bool:
+    """Render a Mermaid diagram to PNG using mermaid-cli (mmdc via npx)."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".mmd", delete=False) as f:
+        f.write(mermaid_code)
+        mmd_path = f.name
+    try:
+        result = subprocess.run(
+            ["npx", "--yes", "@mermaid-js/mermaid-cli", "-i", mmd_path,
+             "-o", output_path, "-w", str(width), "-b", "white"],
+            capture_output=True, text=True, timeout=60,
+        )
+        return result.returncode == 0 and Path(output_path).exists()
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+    finally:
+        Path(mmd_path).unlink(missing_ok=True)
+
+
+MERMAID_FINETUNING_FLOW = """\
+graph TD
+    A["Domain-Specific Dataset<br/><i>e.g. 8,000+ financial Q&A pairs</i>"] --> B["<b>1. PREPARE</b><br/>Format data as<br/>instruction / response pairs"]
+    B --> C["<b>2. TRAIN</b><br/>Update model weights on your data<br/><i>Full fine-tuning or LoRA / QLoRA</i>"]
+    C --> D["<b>3. EVALUATE</b><br/>Test on held-out data,<br/>measure accuracy"]
+    D --> E["<b>4. DEPLOY</b><br/>Use the specialized model<br/>for inference"]
+    E --> F["<b>Model with NEW capabilities</b><br/>Reasoning, calculations,<br/>domain expertise"]
+
+    style A fill:#f5f5f5,stroke:#424242,stroke-width:2px,color:#212121
+    style B fill:#fff3e0,stroke:#e65100,stroke-width:1px,color:#bf360c
+    style C fill:#fff3e0,stroke:#e65100,stroke-width:1px,color:#bf360c
+    style D fill:#fff3e0,stroke:#e65100,stroke-width:1px,color:#bf360c
+    style E fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+    style F fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+"""
+
+MERMAID_RAG_FLOW = """\
+graph TD
+    A["User Question"] --> B["<b>1. EMBED</b><br/>Convert question to vector"]
+    B --> C["<b>2. RETRIEVE</b><br/>Search vector database<br/>for similar documents"]
+    C --> D["<b>3. AUGMENT</b><br/>Add retrieved documents<br/>to the prompt"]
+    D --> E["<b>4. GENERATE</b><br/>LLM generates answer using<br/>question + retrieved context"]
+    E --> F["<b>Answer</b><br/>with source references"]
+
+    style A fill:#f5f5f5,stroke:#424242,stroke-width:2px,color:#212121
+    style B fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1
+    style C fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1
+    style D fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1
+    style E fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+    style F fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#5d4037
+"""
 
 # ---------------------------------------------------------------------------
 # Theme colours  (WCAG AA contrast on every bg they appear on)
@@ -411,21 +505,26 @@ add_footer(s, slide_num[0], TOTAL_SLIDES)
 s = new_slide()
 add_title_bar(s, "RAG: Retrieval-Augmented Generation", "How RAG Works")
 
-flow_text = (
-    "User Question\n"
-    "     |\n"
-    "  [1. EMBED]       Convert question to vector\n"
-    "     |\n"
-    "  [2. RETRIEVE]    Search vector DB for similar docs\n"
-    "     |\n"
-    "  [3. AUGMENT]     Add retrieved docs to prompt\n"
-    "     |\n"
-    "  [4. GENERATE]    LLM generates answer with context\n"
-    "     |\n"
-    "  Answer (with source references)"
-)
-add_textbox(s, Inches(0.8), Inches(1.5), Inches(6), Inches(4), flow_text,
-            font_size=14, color=DARK, font_name="Consolas")
+# Render Mermaid RAG flow as PNG and embed
+_rag_png = Path(tempfile.mkdtemp()) / "rag_flow.png"
+if render_mermaid_png(MERMAID_RAG_FLOW, str(_rag_png)):
+    s.shapes.add_picture(str(_rag_png), Inches(0.5), Inches(1.3), Inches(6.5), Inches(4.8))
+else:
+    flow_text = (
+        "User Question\n"
+        "     |\n"
+        "  [1. EMBED]       Convert question to vector\n"
+        "     |\n"
+        "  [2. RETRIEVE]    Search vector DB for similar docs\n"
+        "     |\n"
+        "  [3. AUGMENT]     Add retrieved docs to prompt\n"
+        "     |\n"
+        "  [4. GENERATE]    LLM generates answer with context\n"
+        "     |\n"
+        "  Answer (with source references)"
+    )
+    add_textbox(s, Inches(0.8), Inches(1.5), Inches(6), Inches(4), flow_text,
+                font_size=14, color=DARK, font_name="Consolas")
 
 add_colored_box(s, Inches(7.2), Inches(1.5), Inches(5.5), Inches(2),
                 "Key Components",
@@ -497,21 +596,26 @@ add_footer(s, slide_num[0], TOTAL_SLIDES)
 s = new_slide()
 add_title_bar(s, "Fine-Tuning: Teaching Models New Skills")
 
-flow = (
-    "Domain-Specific Dataset (e.g., 8,000+ financial Q&A pairs)\n"
-    "     |\n"
-    "  [1. PREPARE]     Format data as instruction/response pairs\n"
-    "     |\n"
-    "  [2. TRAIN]       Update model weights (Full / LoRA / QLoRA)\n"
-    "     |\n"
-    "  [3. EVALUATE]    Test on held-out data, measure accuracy\n"
-    "     |\n"
-    "  [4. DEPLOY]      Use the specialized model for inference\n"
-    "     |\n"
-    "  Model with NEW capabilities"
-)
-add_textbox(s, Inches(0.8), Inches(1.5), Inches(7), Inches(3.5), flow,
-            font_size=14, color=DARK, font_name="Consolas")
+# Render Mermaid fine-tuning flow as PNG and embed
+_ft_png = Path(tempfile.mkdtemp()) / "finetuning_flow.png"
+if render_mermaid_png(MERMAID_FINETUNING_FLOW, str(_ft_png)):
+    s.shapes.add_picture(str(_ft_png), Inches(0.5), Inches(1.3), Inches(6.5), Inches(3.5))
+else:
+    flow = (
+        "Domain-Specific Dataset (e.g., 8,000+ financial Q&A pairs)\n"
+        "     |\n"
+        "  [1. PREPARE]     Format data as instruction/response pairs\n"
+        "     |\n"
+        "  [2. TRAIN]       Update model weights (Full / LoRA / QLoRA)\n"
+        "     |\n"
+        "  [3. EVALUATE]    Test on held-out data, measure accuracy\n"
+        "     |\n"
+        "  [4. DEPLOY]      Use the specialized model for inference\n"
+        "     |\n"
+        "  Model with NEW capabilities"
+    )
+    add_textbox(s, Inches(0.8), Inches(1.5), Inches(7), Inches(3.5), flow,
+                font_size=14, color=DARK, font_name="Consolas")
 
 add_colored_box(s, Inches(0.8), Inches(5.0), Inches(5.5), Inches(1.2),
                 "RAG = Same model + external info at query time",
@@ -724,21 +828,27 @@ add_footer(s, slide_num[0], TOTAL_SLIDES)
 s = new_slide()
 add_title_bar(s, "Decision Framework: When to Use What")
 
-tree = (
-    "              Does the task require NEW REASONING SKILLS?\n"
-    "             /                                           \\\n"
-    "           YES                                           NO\n"
-    "            |                                             |\n"
-    "   Does it need                                Does it need\n"
-    "  FRESH/DYNAMIC data?                        FRESH/DYNAMIC data?\n"
-    "    /          \\                               /          \\\n"
-    "  YES           NO                           YES           NO\n"
-    "   |             |                            |             |\n"
-    " HYBRID      FINE-TUNE                       RAG        PROMPT ENG.\n"
-    "(FT+RAG)    (Best accuracy)               (Dynamic)    (Quick start)"
-)
-add_textbox(s, Inches(0.5), Inches(1.3), Inches(12), Inches(3.5), tree,
-            font_size=13, color=DARK, font_name="Consolas")
+# Render Mermaid decision tree as PNG and embed
+_decision_png = Path(tempfile.mkdtemp()) / "decision_framework.png"
+if render_mermaid_png(MERMAID_DECISION_FRAMEWORK, str(_decision_png)):
+    s.shapes.add_picture(str(_decision_png), Inches(1.5), Inches(1.2), Inches(10), Inches(3.5))
+else:
+    # Fallback to text if mermaid-cli is not available
+    tree = (
+        "              Does the task require NEW REASONING SKILLS?\n"
+        "             /                                           \\\n"
+        "           YES                                           NO\n"
+        "            |                                             |\n"
+        "   Does it need                                Does it need\n"
+        "  FRESH/DYNAMIC data?                        FRESH/DYNAMIC data?\n"
+        "    /          \\                               /          \\\n"
+        "  YES           NO                           YES           NO\n"
+        "   |             |                            |             |\n"
+        " HYBRID      FINE-TUNE                       RAG        PROMPT ENG.\n"
+        "(FT+RAG)    (Best accuracy)               (Dynamic)    (Quick start)"
+    )
+    add_textbox(s, Inches(0.5), Inches(1.3), Inches(12), Inches(3.5), tree,
+                font_size=13, color=DARK, font_name="Consolas")
 
 for i, (title, items, bg) in enumerate([
     ("Choose RAG when:", "- Data changes frequently\n- Need source citations\n- No training data\n- Quick deployment", LIGHT_BLUE_BG),
@@ -1251,33 +1361,38 @@ add_footer(s, slide_num[0], TOTAL_SLIDES)
 s = new_slide()
 add_title_bar(s, "The Hybrid Approach: Best of Both Worlds")
 
-flow = (
-    "  User Question + Financial Table\n"
-    "         |\n"
-    "    +----+----+\n"
-    "    |         |\n"
-    " [RETRIEVE]  [FINE-TUNED MODEL]\n"
-    "  from DB     processes table\n"
-    "    |         |\n"
-    "    +----+----+\n"
-    "         |\n"
-    "  [FINE-TUNED MODEL\n"
-    "   + Retrieved Context]\n"
-    "         |\n"
-    "  Answer with domain reasoning\n"
-    "  + fresh context + citations"
-)
-add_textbox(s, Inches(1), Inches(1.5), Inches(5), Inches(4), flow,
-            font_size=14, font_name="Consolas")
+# Render Mermaid hybrid architecture as PNG and embed
+_hybrid_png = Path(tempfile.mkdtemp()) / "hybrid_architecture.png"
+if render_mermaid_png(MERMAID_HYBRID_ARCHITECTURE, str(_hybrid_png)):
+    s.shapes.add_picture(str(_hybrid_png), Inches(0.5), Inches(1.3), Inches(6.5), Inches(4.5))
+else:
+    flow = (
+        "  User Question + Financial Table\n"
+        "         |\n"
+        "    +----+----+\n"
+        "    |         |\n"
+        " [RETRIEVE]  [FINE-TUNED MODEL]\n"
+        "  from DB     processes table\n"
+        "    |         |\n"
+        "    +----+----+\n"
+        "         |\n"
+        "  [FINE-TUNED MODEL\n"
+        "   + Retrieved Context]\n"
+        "         |\n"
+        "  Answer with domain reasoning\n"
+        "  + fresh context + citations"
+    )
+    add_textbox(s, Inches(0.5), Inches(1.5), Inches(6.5), Inches(4), flow,
+                font_size=14, font_name="Consolas")
 
-add_colored_box(s, Inches(7), Inches(1.5), Inches(5.5), Inches(1.8),
+add_colored_box(s, Inches(7.5), Inches(1.5), Inches(5.3), Inches(1.8),
                 "What Fine-Tuning Contributes",
                 "- Numerical reasoning ability\n"
                 "- Domain-specific patterns\n"
                 "- Consistent output format\n"
                 "- Lower error rate",
                 LIGHT_GREEN_BG)
-add_colored_box(s, Inches(7), Inches(3.6), Inches(5.5), Inches(1.8),
+add_colored_box(s, Inches(7.5), Inches(3.6), Inches(5.3), Inches(1.8),
                 "What RAG Contributes",
                 "- Fresh, updatable knowledge\n"
                 "- Source citations for audit\n"
