@@ -110,4 +110,4 @@ print(f'RAG ready: {engine.num_chunks} chunks indexed')
 
 echo ""
 echo "Starting Streamlit on port 8501..."
-exec streamlit run app/finetune_vs_rag.py
+exec streamlit run app/Finetune_vs_RAG.py

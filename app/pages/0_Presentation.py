@@ -48,59 +48,69 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     .highlight-box {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1a56db 0%, #1e3a5f 100%);
         padding: 1.5rem;
         border-radius: 10px;
-        color: white;
+        color: #ffffff;
         margin: 1rem 0;
     }
+    .highlight-box strong, .highlight-box b { color: #ffffff; }
     .green-box {
-        background-color: #d4edda;
-        border-left: 5px solid #28a745;
+        background-color: #ecfdf5;
+        border-left: 5px solid #16a34a;
         padding: 1rem 1.5rem;
         border-radius: 5px;
         margin: 0.5rem 0;
+        color: #14532d;
     }
+    .green-box strong, .green-box b { color: #14532d; }
     .red-box {
-        background-color: #f8d7da;
-        border-left: 5px solid #dc3545;
+        background-color: #fef2f2;
+        border-left: 5px solid #dc2626;
         padding: 1rem 1.5rem;
         border-radius: 5px;
         margin: 0.5rem 0;
+        color: #7f1d1d;
     }
+    .red-box strong, .red-box b { color: #7f1d1d; }
     .blue-box {
-        background-color: #d1ecf1;
-        border-left: 5px solid #17a2b8;
+        background-color: #eff6ff;
+        border-left: 5px solid #2563eb;
         padding: 1rem 1.5rem;
         border-radius: 5px;
         margin: 0.5rem 0;
+        color: #1e3a5f;
     }
+    .blue-box strong, .blue-box b { color: #1e3a5f; }
     .orange-box {
-        background-color: #fff3cd;
-        border-left: 5px solid #ffc107;
+        background-color: #fffbeb;
+        border-left: 5px solid #d97706;
         padding: 1rem 1.5rem;
         border-radius: 5px;
         margin: 0.5rem 0;
+        color: #78350f;
     }
+    .orange-box strong, .orange-box b { color: #78350f; }
     .tool-card {
-        border: 2px solid #e0e0e0;
+        border: 2px solid #d1d5db;
         border-radius: 10px;
         padding: 1rem;
         margin: 0.5rem 0;
-        background-color: #fafafa;
+        background-color: #f9fafb;
+        color: #1f2937;
     }
     .comparison-table th {
-        background-color: #0066cc;
-        color: white;
+        background-color: #1a56db;
+        color: #ffffff;
     }
     .stat-number {
         font-size: 2.5rem;
         font-weight: bold;
-        color: #0066cc;
+        color: #1a56db;
     }
     .section-label {
         font-size: 0.8rem;
-        color: #999;
+        color: #6b7280;
         text-transform: uppercase;
         letter-spacing: 2px;
         margin-bottom: 0.5rem;

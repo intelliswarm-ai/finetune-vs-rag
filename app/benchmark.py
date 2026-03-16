@@ -14,6 +14,7 @@ Usage:
     python app/benchmark.py
 """
 import json
+import math
 import sys
 import time
 from pathlib import Path
@@ -22,6 +23,44 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 RESULTS_PATH = Path(__file__).parent.parent / "data" / "benchmark_results.json"
 TEST_CASES_PATH = Path(__file__).parent.parent / "data" / "benchmark_test_cases.json"
+
+
+# -------------------------------------------------------------------------
+# Market pricing (USD per 1M tokens) for cost estimation
+# -------------------------------------------------------------------------
+MARKET_PRICES = {
+    # BERT 110M - local inference, near-zero cost; cloud API estimate shown
+    "bert_110m": {
+        "input_per_1m": 0.01,   # HuggingFace Inference API estimate
+        "output_per_1m": 0.00,  # classification, no output tokens
+    },
+    # Llama2-7B class - representative cloud pricing (Together AI / Fireworks)
+    "llama2_7b": {
+        "input_per_1m": 0.20,
+        "output_per_1m": 0.20,
+    },
+}
+
+# For comparison in presentation
+REFERENCE_PRICES = {
+    "gpt_4o":        {"input_per_1m": 2.50,  "output_per_1m": 10.00},
+    "gpt_4o_mini":   {"input_per_1m": 0.15,  "output_per_1m": 0.60},
+    "claude_sonnet":  {"input_per_1m": 3.00,  "output_per_1m": 15.00},
+    "llama3_70b":    {"input_per_1m": 0.88,  "output_per_1m": 0.88},
+}
+
+
+def estimate_cost(prompt_tokens, completion_tokens, price_tier="llama2_7b"):
+    """Estimate cost in USD given token counts and a pricing tier."""
+    prices = MARKET_PRICES.get(price_tier, MARKET_PRICES["llama2_7b"])
+    cost = (prompt_tokens * prices["input_per_1m"] +
+            completion_tokens * prices["output_per_1m"]) / 1_000_000
+    return round(cost, 8)
+
+
+def estimate_tokens_from_text(text):
+    """Estimate token count from text length (~1.3 tokens per word)."""
+    return max(1, int(len(text.split()) * 1.3))
 
 
 # -------------------------------------------------------------------------
@@ -56,6 +95,11 @@ def run_bert_sentiment_benchmark():
                 row[f"{name}_confidence"] = r.confidence
                 row[f"{name}_latency_ms"] = r.latency_ms
                 row[f"{name}_correct"] = r.label == expected
+                row[f"{name}_input_tokens"] = r.input_tokens
+                row[f"{name}_completion_tokens"] = 0  # classification
+                row[f"{name}_total_tokens"] = r.input_tokens
+                row[f"{name}_cost_usd"] = estimate_cost(
+                    r.input_tokens, 0, "bert_110m")
             except Exception:
                 row[f"{name}_label"] = "error"
                 row[f"{name}_correct"] = False
@@ -195,6 +239,11 @@ def run_llama_numerical_benchmark():
                 row[f"{name}_extracted"] = extracted
                 row[f"{name}_correct"] = correct
                 row[f"{name}_latency_ms"] = r.latency_ms
+                row[f"{name}_prompt_tokens"] = r.prompt_tokens
+                row[f"{name}_completion_tokens"] = r.completion_tokens
+                row[f"{name}_total_tokens"] = r.total_tokens
+                row[f"{name}_cost_usd"] = estimate_cost(
+                    r.prompt_tokens, r.completion_tokens, "llama2_7b")
             except Exception as e:
                 row[f"{name}_correct"] = False
                 row[f"{name}_answer"] = str(e)[:100]
@@ -391,6 +440,11 @@ def run_financial_ratio_benchmark():
                 row[f"{name}_extracted"] = extracted
                 row[f"{name}_correct"] = correct
                 row[f"{name}_latency_ms"] = r.latency_ms
+                row[f"{name}_prompt_tokens"] = r.prompt_tokens
+                row[f"{name}_completion_tokens"] = r.completion_tokens
+                row[f"{name}_total_tokens"] = r.total_tokens
+                row[f"{name}_cost_usd"] = estimate_cost(
+                    r.prompt_tokens, r.completion_tokens, "llama2_7b")
             except Exception as e:
                 row[f"{name}_correct"] = False
                 row[f"{name}_answer"] = str(e)[:100]
@@ -464,6 +518,11 @@ def run_single_sentiment_case(case):
             row[f"{name}_confidence"] = r.confidence
             row[f"{name}_latency_ms"] = r.latency_ms
             row[f"{name}_correct"] = r.label == expected
+            row[f"{name}_input_tokens"] = r.input_tokens
+            row[f"{name}_completion_tokens"] = 0
+            row[f"{name}_total_tokens"] = r.input_tokens
+            row[f"{name}_cost_usd"] = estimate_cost(
+                r.input_tokens, 0, "bert_110m")
         except Exception:
             row[f"{name}_label"] = "error"
             row[f"{name}_correct"] = False
@@ -508,8 +567,16 @@ def run_single_numerical_model(row, case, model_name):
         row[f"{model_name}_extracted"] = extracted
         row[f"{model_name}_correct"] = correct
         row[f"{model_name}_latency_ms"] = r.latency_ms
+        row[f"{model_name}_prompt_tokens"] = r.prompt_tokens
+        row[f"{model_name}_completion_tokens"] = r.completion_tokens
+        row[f"{model_name}_total_tokens"] = r.total_tokens
+        row[f"{model_name}_cost_usd"] = estimate_cost(
+            r.prompt_tokens, r.completion_tokens, "llama2_7b")
         return {"answer": r.answer[:500], "correct": correct,
-                "extracted": extracted, "latency_ms": r.latency_ms}
+                "extracted": extracted, "latency_ms": r.latency_ms,
+                "prompt_tokens": r.prompt_tokens,
+                "completion_tokens": r.completion_tokens,
+                "total_tokens": r.total_tokens}
     except Exception as e:
         row[f"{model_name}_correct"] = False
         row[f"{model_name}_answer"] = str(e)[:100]
@@ -518,11 +585,13 @@ def run_single_numerical_model(row, case, model_name):
 
 
 def compute_live_stats(results, model_keys):
-    """Compute running accuracy and avg latency from partial results."""
+    """Compute running accuracy, avg latency, and token stats from partial results."""
     total = len(results)
     if total == 0:
         return {m: {"accuracy": 0, "correct": 0, "total": 0,
-                     "avg_latency_ms": 0, "avg_confidence": 0}
+                     "avg_latency_ms": 0, "avg_confidence": 0,
+                     "total_tokens": 0, "avg_tokens_per_query": 0,
+                     "total_cost_usd": 0}
                 for m in model_keys}
     stats = {}
     for m in model_keys:
@@ -531,18 +600,24 @@ def compute_live_stats(results, model_keys):
                      if f"{m}_latency_ms" in r]
         confidences = [r[f"{m}_confidence"] for r in results
                        if f"{m}_confidence" in r]
+        tokens = [r.get(f"{m}_total_tokens", 0) for r in results]
+        costs = [r.get(f"{m}_cost_usd", 0) for r in results]
+        total_tok = sum(tokens)
         stats[m] = {
             "accuracy": round(correct / total * 100, 1),
             "correct": correct,
             "total": total,
             "avg_latency_ms": round(sum(latencies) / len(latencies), 1) if latencies else 0,
             "avg_confidence": round(sum(confidences) / len(confidences), 3) if confidences else 0,
+            "total_tokens": total_tok,
+            "avg_tokens_per_query": round(total_tok / total) if total else 0,
+            "total_cost_usd": round(sum(costs), 8),
         }
     return stats
 
 
 def compute_section_summary(results, model_keys):
-    """Compute stats for a benchmark section."""
+    """Compute stats for a benchmark section including tokens, cost, F1, MAPE."""
     total = len(results)
     if total == 0:
         return {}
@@ -553,15 +628,55 @@ def compute_section_summary(results, model_keys):
                      if f"{prefix}_latency_ms" in r]
         confidences = [r[f"{prefix}_confidence"] for r in results
                        if f"{prefix}_confidence" in r]
-        return {
+        # Token metrics
+        prompt_tok = [r.get(f"{prefix}_prompt_tokens", r.get(f"{prefix}_input_tokens", 0))
+                      for r in results]
+        comp_tok = [r.get(f"{prefix}_completion_tokens", 0) for r in results]
+        total_tok_list = [r.get(f"{prefix}_total_tokens", 0) for r in results]
+        costs = [r.get(f"{prefix}_cost_usd", 0) for r in results]
+        total_tok = sum(total_tok_list)
+        total_cost = sum(costs)
+
+        # Throughput (tokens/sec) from tokens and latency
+        throughputs = []
+        for r in results:
+            t = r.get(f"{prefix}_total_tokens", 0)
+            lat = r.get(f"{prefix}_latency_ms", 0)
+            if t > 0 and lat > 0:
+                throughputs.append(t / (lat / 1000))
+
+        stats = {
             "accuracy": round(correct / total * 100, 1),
             "correct": correct,
             "total": total,
             "avg_latency_ms": round(sum(latencies) / len(latencies), 1) if latencies else None,
             "avg_confidence": round(sum(confidences) / len(confidences), 3) if confidences else None,
+            "total_prompt_tokens": sum(prompt_tok),
+            "total_completion_tokens": sum(comp_tok),
+            "total_tokens": total_tok,
+            "avg_tokens_per_query": round(total_tok / total) if total else 0,
+            "total_cost_usd": round(total_cost, 8),
+            "avg_cost_per_query_usd": round(total_cost / total, 8) if total else 0,
+            "cost_per_1k_queries_usd": round(total_cost / total * 1000, 4) if total else 0,
+            "avg_throughput_tps": round(sum(throughputs) / len(throughputs), 1) if throughputs else None,
         }
+        return stats
 
     summary = {m: _stats(m) for m in model_keys}
+
+    # F1 score for sentiment (where labels exist)
+    if any(f"{model_keys[0]}_label" in r for r in results):
+        for m in model_keys:
+            f1_data = _compute_f1(results, m)
+            if f1_data:
+                summary[m].update(f1_data)
+
+    # MAPE for numerical (where extracted values exist)
+    if any(f"{model_keys[0]}_extracted" in r for r in results):
+        for m in model_keys:
+            mape = _compute_mape(results, m)
+            if mape is not None:
+                summary[m]["mape"] = mape
 
     # Per-category
     categories = sorted(set(r.get("category", "other") for r in results))
@@ -575,6 +690,62 @@ def compute_section_summary(results, model_keys):
         summary[f"category_{cat}"] = entry
 
     return summary
+
+
+def _compute_f1(results, model_key):
+    """Compute precision, recall, F1 (macro) for a sentiment model."""
+    labels = ["positive", "negative", "neutral"]
+    predictions = []
+    expected = []
+    for r in results:
+        pred = r.get(f"{model_key}_label")
+        exp = r.get("expected")
+        if pred and exp and pred != "error":
+            predictions.append(pred)
+            expected.append(exp)
+    if not predictions:
+        return None
+
+    per_class = {}
+    for label in labels:
+        tp = sum(1 for p, e in zip(predictions, expected) if p == label and e == label)
+        fp = sum(1 for p, e in zip(predictions, expected) if p == label and e != label)
+        fn = sum(1 for p, e in zip(predictions, expected) if p != label and e == label)
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+        per_class[label] = {"precision": round(precision, 3),
+                            "recall": round(recall, 3), "f1": round(f1, 3)}
+
+    macro_f1 = round(sum(v["f1"] for v in per_class.values()) / len(labels), 3)
+    macro_precision = round(sum(v["precision"] for v in per_class.values()) / len(labels), 3)
+    macro_recall = round(sum(v["recall"] for v in per_class.values()) / len(labels), 3)
+
+    return {
+        "f1_macro": macro_f1,
+        "precision_macro": macro_precision,
+        "recall_macro": macro_recall,
+        "f1_per_class": per_class,
+    }
+
+
+def _compute_mape(results, model_key):
+    """Compute Mean Absolute Percentage Error for numerical predictions."""
+    errors = []
+    for r in results:
+        extracted = r.get(f"{model_key}_extracted")
+        expected = r.get("expected")
+        if extracted is not None and expected is not None:
+            try:
+                got = float(extracted)
+                exp = float(expected)
+                if exp != 0:
+                    errors.append(abs(got - exp) / abs(exp))
+            except (ValueError, TypeError):
+                pass
+    if not errors:
+        return None
+    return round(sum(errors) / len(errors) * 100, 2)  # as percentage
 
 
 def run_full_benchmark():
@@ -666,5 +837,105 @@ def run_full_benchmark():
     return output
 
 
+# -------------------------------------------------------------------------
+# Backfill: add token/cost estimates to existing results
+# -------------------------------------------------------------------------
+def backfill_token_metrics():
+    """Add estimated token counts and costs to existing benchmark results.
+
+    For BERT sentiment: tokens estimated from text word count (~1.3 tokens/word).
+    For Llama2 numerical/ratios: tokens estimated from prompt + answer text.
+    """
+    if not RESULTS_PATH.exists():
+        print("No results file to backfill.")
+        return
+
+    with open(RESULTS_PATH) as f:
+        data = json.load(f)
+
+    sections = data.get("sections", {})
+
+    # --- Backfill sentiment ---
+    sent = sections.get("bert_110m_sentiment", {})
+    sent_models = sent.get("models", [])
+    for r in sent.get("results", []):
+        text = r.get("text", "")
+        base_tokens = estimate_tokens_from_text(text)
+        for m in sent_models:
+            if f"{m}_input_tokens" not in r and r.get(f"{m}_label") != "error":
+                if m == "rag":
+                    # RAG processes query + ~5 retrieved examples
+                    tok = base_tokens + base_tokens * 5
+                elif m == "hybrid":
+                    # Hybrid = finbert + rag
+                    tok = base_tokens + base_tokens + base_tokens * 5
+                else:
+                    tok = base_tokens
+                r[f"{m}_input_tokens"] = tok
+                r[f"{m}_completion_tokens"] = 0
+                r[f"{m}_total_tokens"] = tok
+                r[f"{m}_cost_usd"] = estimate_cost(tok, 0, "bert_110m")
+
+    # --- Backfill numerical + financial ratios ---
+    for sec_key in ["llama2_7b_numerical", "llama2_7b_financial_ratios"]:
+        sec = sections.get(sec_key, {})
+        sec_models = sec.get("models", [])
+        for r in sec.get("results", []):
+            q = r.get("question", "")
+            table = ""
+            # Retrieve table from test cases if possible
+            case_id = r.get("id", "")
+            for tc in NUMERICAL_CASES + FINANCIAL_RATIO_CASES:
+                if tc["id"] == case_id:
+                    table = tc.get("table", "")
+                    break
+
+            for m in sec_models:
+                if f"{m}_prompt_tokens" not in r and r.get(f"{m}_correct") is not None:
+                    answer = r.get(f"{m}_answer", "")
+                    # Estimate prompt tokens from the prompt components
+                    prompt_text = q + " " + table
+                    if m in ("rag", "hybrid"):
+                        # RAG/hybrid adds ~200-300 tokens of retrieved docs
+                        prompt_tokens = estimate_tokens_from_text(prompt_text) + 250
+                    else:
+                        prompt_tokens = estimate_tokens_from_text(prompt_text)
+
+                    # Add template overhead
+                    if m == "finetuned":
+                        prompt_tokens += 40  # system prompt
+                    elif m == "hybrid":
+                        prompt_tokens += 40  # system prompt + doc markers
+
+                    comp_tokens = estimate_tokens_from_text(answer) if answer else 0
+                    total_tok = prompt_tokens + comp_tokens
+
+                    r[f"{m}_prompt_tokens"] = prompt_tokens
+                    r[f"{m}_completion_tokens"] = comp_tokens
+                    r[f"{m}_total_tokens"] = total_tok
+                    r[f"{m}_cost_usd"] = estimate_cost(
+                        prompt_tokens, comp_tokens, "llama2_7b")
+
+    # Recompute summaries with new data
+    if sent.get("results"):
+        sent["summary"] = compute_section_summary(sent["results"], sent_models)
+    for sec_key in ["llama2_7b_numerical", "llama2_7b_financial_ratios"]:
+        sec = sections.get(sec_key, {})
+        if sec.get("results"):
+            sec["summary"] = compute_section_summary(
+                sec["results"], sec.get("models", []))
+
+    # Save
+    RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(RESULTS_PATH, "w") as f:
+        json.dump(data, f, indent=2)
+    print(f"Backfilled token metrics in {RESULTS_PATH}")
+    return data
+
+
 if __name__ == "__main__":
-    run_full_benchmark()
+    import sys as _sys
+    if len(_sys.argv) > 1 and _sys.argv[1] == "--backfill":
+        backfill_token_metrics()
+    else:
+        run_full_benchmark()

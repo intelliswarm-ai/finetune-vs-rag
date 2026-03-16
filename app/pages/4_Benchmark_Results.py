@@ -110,7 +110,7 @@ def render_section(section_data):
         ))
     fig.update_layout(title=f"Accuracy -- {arch}", barmode="group",
                        yaxis_range=[0, 105])
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=f"acc_chart_{title}")
 
     # Latency chart
     lat_data = {m: summary.get(m, {}).get("avg_latency_ms") for m in models}
@@ -125,7 +125,7 @@ def render_section(section_data):
                     text=[f"{v:.0f}ms"], textposition="auto",
                 ))
         fig2.update_layout(title="Average Latency", barmode="group")
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, use_container_width=True, key=f"lat_chart_{title}")
 
     # Confidence chart (sentiment only)
     conf_data = {m: summary.get(m, {}).get("avg_confidence") for m in models}
@@ -141,7 +141,7 @@ def render_section(section_data):
                 ))
         fig_conf.update_layout(title="Average Confidence", barmode="group",
                                 yaxis_range=[0, 1.05])
-        st.plotly_chart(fig_conf, use_container_width=True)
+        st.plotly_chart(fig_conf, use_container_width=True, key=f"conf_chart_{title}")
 
     # Per-example table
     with st.expander("Per-example results"):
@@ -177,18 +177,81 @@ def render_section(section_data):
         with st.expander("Category breakdown"):
             st.table(pd.DataFrame(cat_rows))
 
-            cats = [r["Category"] for r in cat_rows]
-            fig3 = go.Figure()
-            for m in models:
-                accs = [float(r[labels.get(m, m).split("(")[0].strip()].replace("%", ""))
-                        for r in cat_rows]
-                fig3.add_trace(go.Bar(
-                    name=labels.get(m, m), x=cats, y=accs,
-                    marker_color=COLORS.get(m, "#999"),
-                ))
-            fig3.update_layout(title="Accuracy by Category", barmode="group",
-                               yaxis_range=[0, 105])
-            st.plotly_chart(fig3, use_container_width=True)
+    # Token Usage & Cost metrics
+    tok_data = {m: summary.get(m, {}).get("total_tokens", 0) for m in models}
+    if any(v for v in tok_data.values()):
+        st.markdown("---")
+        st.markdown("##### Token Usage & Cost")
+
+        tok_cols = st.columns(len(models))
+        for col, m in zip(tok_cols, models):
+            s = summary.get(m, {})
+            with col:
+                avg_tok = s.get("avg_tokens_per_query", 0)
+                cost_1k = s.get("cost_per_1k_queries_usd", 0)
+                tps = s.get("avg_throughput_tps", 0)
+                st.metric(labels.get(m, m).split("(")[0].strip(),
+                          f"{avg_tok:,} tok/query")
+                st.caption(f"Cost/1K queries: ${cost_1k:.4f}")
+                if tps:
+                    st.caption(f"Throughput: {tps:,.0f} tok/s")
+
+        # Token chart
+        fig_tok = go.Figure()
+        for m in models:
+            s = summary.get(m, {})
+            fig_tok.add_trace(go.Bar(
+                name=labels.get(m, m).split("(")[0].strip(),
+                x=["Avg Tokens/Query"],
+                y=[s.get("avg_tokens_per_query", 0)],
+                marker_color=COLORS.get(m, "#999"),
+                text=[f"{s.get('avg_tokens_per_query', 0):,}"],
+                textposition="auto",
+            ))
+        fig_tok.update_layout(title="Average Tokens per Query", barmode="group")
+        st.plotly_chart(fig_tok, use_container_width=True, key=f"tok_chart_{title}")
+
+    # F1 score (sentiment)
+    f1_data = {m: summary.get(m, {}).get("f1_macro") for m in models}
+    if any(v is not None for v in f1_data.values()):
+        st.markdown("##### Quality Metrics: F1 Score")
+        f1_cols = st.columns(len(models))
+        for col, m in zip(f1_cols, models):
+            s = summary.get(m, {})
+            with col:
+                f1 = s.get("f1_macro", 0)
+                prec = s.get("precision_macro", 0)
+                rec = s.get("recall_macro", 0)
+                st.metric(labels.get(m, m).split("(")[0].strip(),
+                          f"F1: {f1:.3f}")
+                st.caption(f"P: {prec:.3f} / R: {rec:.3f}")
+
+    # MAPE (numerical)
+    mape_data = {m: summary.get(m, {}).get("mape") for m in models}
+    if any(v is not None for v in mape_data.values()):
+        st.markdown("##### Quality Metrics: Mean Absolute % Error")
+        mape_cols = st.columns(len(models))
+        for col, m in zip(mape_cols, models):
+            s = summary.get(m, {})
+            with col:
+                mape = s.get("mape", 0)
+                st.metric(labels.get(m, m).split("(")[0].strip(),
+                          f"MAPE: {mape:.1f}%",
+                          delta=None)
+
+    if cat_rows:
+        cats = [r["Category"] for r in cat_rows]
+        fig3 = go.Figure()
+        for m in models:
+            accs = [float(r[labels.get(m, m).split("(")[0].strip()].replace("%", ""))
+                    for r in cat_rows]
+            fig3.add_trace(go.Bar(
+                name=labels.get(m, m), x=cats, y=accs,
+                marker_color=COLORS.get(m, "#999"),
+            ))
+        fig3.update_layout(title="Accuracy by Category", barmode="group",
+                           yaxis_range=[0, 105])
+        st.plotly_chart(fig3, use_container_width=True, key=f"cat_chart_{title}")
 
 
 # =========================================================================

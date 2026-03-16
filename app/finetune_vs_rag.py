@@ -53,6 +53,7 @@ st.markdown("""
 # Header
 st.markdown('<p class="main-header">Fine-Tuning vs RAG: Live Demo</p>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Interactive presentation and live comparison for financial AI</p>', unsafe_allow_html=True)
+st.markdown("[:material/code: GitHub Repository](https://github.com/intelliswarm-ai/finetune-vs-rag)")
 
 # Check demo status
 try:
@@ -70,31 +71,16 @@ else:
 
 st.divider()
 
-# Presentation flow
-st.subheader("Recommended Presentation Flow")
-
-col1, col2 = st.columns([1, 1])
-
-with col1:
-    st.markdown("""
-    <div class="flow-step"><strong>Step 1 (55 min):</strong> Walk through the presentation slides</div>
-    <div class="flow-step"><strong>Step 2 (8 min):</strong> Live demo - Sentiment Analysis</div>
-    <div class="flow-step"><strong>Step 3 (7 min):</strong> Live demo - Numerical Reasoning</div>
-    <div class="flow-step"><strong>Step 4 (5 min):</strong> Benchmark Results & Architecture</div>
-    """, unsafe_allow_html=True)
-
-with col2:
-    st.markdown("""
-    ### Quick Navigation
-    """)
-    if st.button("Start Presentation", type="primary", use_container_width=True):
-        st.switch_page("pages/0_Presentation.py")
-    if st.button("Sentiment Demo", use_container_width=True):
-        st.switch_page("pages/3_Sentiment_Analysis.py")
-    if st.button("Numerical Reasoning Demo", use_container_width=True):
-        st.switch_page("pages/1_Numerical_Reasoning.py")
-    if st.button("Benchmark Results", use_container_width=True):
-        st.switch_page("pages/4_Benchmark_Results.py")
+# Quick Navigation
+st.subheader("Quick Navigation")
+if st.button("Start Presentation", type="primary", use_container_width=True):
+    st.switch_page("pages/0_Presentation.py")
+if st.button("Sentiment Demo", use_container_width=True):
+    st.switch_page("pages/3_Sentiment_Analysis.py")
+if st.button("Numerical Reasoning Demo", use_container_width=True):
+    st.switch_page("pages/1_Numerical_Reasoning.py")
+if st.button("Benchmark Results", use_container_width=True):
+    st.switch_page("pages/4_Benchmark_Results.py")
 
 st.divider()
 
@@ -208,7 +194,7 @@ with st.sidebar:
 
     **Pages:**
     """)
-    st.page_link("finetune_vs_rag.py", label="Home")
+    st.page_link("Finetune_vs_RAG.py", label="Home")
     st.page_link("pages/0_Presentation.py", label="Presentation Slides")
     st.page_link("pages/1_Numerical_Reasoning.py", label="Numerical Reasoning")
     st.page_link("pages/2_Financial_Ratios.py", label="Financial Ratios")

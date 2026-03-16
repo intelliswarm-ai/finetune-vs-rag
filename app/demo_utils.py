@@ -34,6 +34,7 @@ class SentimentResult:
     latency_ms: float
     model_name: str
     is_live: bool = True
+    input_tokens: int = 0
 
 
 @dataclass
@@ -44,6 +45,9 @@ class LLMResponse:
     reasoning_steps: Optional[str] = None
     retrieved_context: Optional[List[str]] = None
     is_live: bool = True
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
 
 
 @dataclass
@@ -57,6 +61,7 @@ class RAGSentimentResult:
     retrieval_ms: float
     generation_ms: float
     is_live: bool = True
+    input_tokens: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +175,7 @@ def run_finbert(text: str) -> SentimentResult:
     import torch
     start = time.perf_counter()
     inputs = _finbert_tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+    input_tokens = inputs["input_ids"].shape[1]
     with torch.no_grad():
         outputs = _finbert_model(**inputs)
     probs = torch.nn.functional.softmax(outputs.logits, dim=-1)[0]
@@ -186,6 +192,7 @@ def run_finbert(text: str) -> SentimentResult:
         latency_ms=round(elapsed_ms, 1),
         model_name="ProsusAI/finbert (local)",
         is_live=True,
+        input_tokens=input_tokens,
     )
 
 
@@ -227,6 +234,9 @@ def run_base_bert_sentiment(text: str) -> SentimentResult:
     similarities = torch.mm(query_emb, _proto_embeddings.t())[0]
     elapsed_ms = (time.perf_counter() - start) * 1000
 
+    # Count input tokens
+    input_tokens = len(_bert_base_tokenizer.encode(text))
+
     labels = list(_BASE_LABEL_PROTOTYPES.keys())
     scores_raw = {labels[i]: similarities[i].item() for i in range(len(labels))}
 
@@ -243,6 +253,7 @@ def run_base_bert_sentiment(text: str) -> SentimentResult:
         latency_ms=round(elapsed_ms, 1),
         model_name="bert-base-uncased (110M, no fine-tuning, no RAG)",
         is_live=True,
+        input_tokens=input_tokens,
     )
 
 
@@ -352,6 +363,9 @@ def run_hybrid_sentiment(text: str) -> SentimentResult:
     best_label = max(combined, key=combined.get)
     elapsed_ms = (time.perf_counter() - start) * 1000
 
+    # Total tokens = finbert tokens + rag tokens
+    total_input_tokens = finbert_result.input_tokens + rag_result.input_tokens
+
     return SentimentResult(
         label=best_label,
         confidence=combined[best_label],
@@ -359,6 +373,7 @@ def run_hybrid_sentiment(text: str) -> SentimentResult:
         latency_ms=round(elapsed_ms, 1),
         model_name="FinBERT + RAG hybrid (110M)",
         is_live=True,
+        input_tokens=total_input_tokens,
     )
 
 
@@ -403,6 +418,11 @@ def run_rag_sentiment(text: str) -> RAGSentimentResult:
 
     total_ms = (time.perf_counter() - start) * 1000
 
+    # Count tokens: query + all retrieved examples
+    input_tokens = len(_bert_base_tokenizer.encode(text))
+    for ex in top_examples:
+        input_tokens += len(_bert_base_tokenizer.encode(ex["text"]))
+
     return RAGSentimentResult(
         label=label,
         confidence=round(confidence, 4),
@@ -416,6 +436,7 @@ def run_rag_sentiment(text: str) -> RAGSentimentResult:
         retrieval_ms=round(retrieval_ms, 1),
         generation_ms=round(generation_ms, 1),
         is_live=True,
+        input_tokens=input_tokens,
     )
 
 
@@ -435,11 +456,15 @@ def call_base_model(question: str, table: str = "", context: str = "") -> LLMRes
         temperature=0.3, max_tokens=600,
     )
     ms = (time.perf_counter() - start) * 1000
+    usage = getattr(resp, "usage", None)
     return LLMResponse(
         answer=resp.choices[0].message.content,
         latency_ms=round(ms, 1),
         model_name=f"{LLM_MODEL} (base)",
         is_live=True,
+        prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+        completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        total_tokens=getattr(usage, "total_tokens", 0) or 0,
     )
 
 
@@ -461,12 +486,16 @@ def call_rag_model(question: str, table: str = "", context: str = "",
         temperature=0.3, max_tokens=800,
     )
     ms = (time.perf_counter() - start) * 1000
+    usage = getattr(resp, "usage", None)
     return LLMResponse(
         answer=resp.choices[0].message.content,
         latency_ms=round(ms, 1),
         model_name=f"{LLM_MODEL} + RAG",
         retrieved_context=retrieved_docs,
         is_live=True,
+        prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+        completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        total_tokens=getattr(usage, "total_tokens", 0) or 0,
     )
 
 
@@ -502,11 +531,15 @@ def call_finetuned_model(question: str, table: str = "", context: str = "") -> L
             )
         raise
     ms = (time.perf_counter() - start) * 1000
+    usage = getattr(resp, "usage", None)
     return LLMResponse(
         answer=resp.choices[0].message.content,
         latency_ms=round(ms, 1),
         model_name=f"FinQA-7B (fine-tuned Llama2-7B)",
         is_live=True,
+        prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+        completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        total_tokens=getattr(usage, "total_tokens", 0) or 0,
     )
 
 
@@ -547,12 +580,16 @@ def call_hybrid_model(question: str, table: str = "", context: str = "",
             )
         raise
     ms = (time.perf_counter() - start) * 1000
+    usage = getattr(resp, "usage", None)
     return LLMResponse(
         answer=resp.choices[0].message.content,
         latency_ms=round(ms, 1),
         model_name=f"FinQA-7B + RAG (fine-tuned Llama2-7B + retrieval)",
         retrieved_context=retrieved_docs,
         is_live=True,
+        prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+        completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        total_tokens=getattr(usage, "total_tokens", 0) or 0,
     )
 
 
