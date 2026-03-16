@@ -1724,6 +1724,262 @@ def slide_demo_intro():
 
 
 # ---------------------------------------------------------------------------
+# Benchmark Results slides (loaded from data/benchmark_results.json)
+# ---------------------------------------------------------------------------
+import json
+from pathlib import Path as _Path
+
+_RESULTS_PATH = _Path(__file__).parent.parent.parent / "data" / "benchmark_results.json"
+_benchmark_data = {}
+if _RESULTS_PATH.exists():
+    try:
+        with open(_RESULTS_PATH) as _f:
+            _benchmark_data = json.load(_f)
+    except (json.JSONDecodeError, OSError):
+        pass
+
+_COLORS_MAP = {
+    "base": "#E84D4D", "finbert": "#2EA04E", "finetuned": "#2EA04E",
+    "rag": "#428BCA", "hybrid": "#F09319",
+}
+
+
+def _render_benchmark_section(section_key, title, labels):
+    """Render accuracy, latency, and quality metrics for one benchmark section."""
+    import plotly.graph_objects as go
+    sections = _benchmark_data.get("sections", {})
+    if section_key not in sections:
+        st.warning(f"No benchmark data found for {title}. Run the benchmarks first.")
+        return
+    sec = sections[section_key]
+    summary = sec.get("summary", {})
+    models = sec.get("models", [])
+    arch = sec.get("architecture", "")
+
+    st.markdown(f'<p class="slide-title">{title}</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="slide-subtitle">Architecture: {arch}</p>', unsafe_allow_html=True)
+
+    # Accuracy metric cards
+    cols = st.columns(len(models))
+    for col, m in zip(cols, models):
+        sm = summary.get(m, {})
+        with col:
+            st.metric(
+                labels.get(m, m),
+                f"{sm.get('accuracy', 0)}%",
+                delta=f"{sm.get('correct', 0)}/{sm.get('total', 0)}",
+            )
+
+    # Accuracy + Latency charts side by side
+    chart_col1, chart_col2 = st.columns(2)
+    with chart_col1:
+        fig = go.Figure()
+        for m in models:
+            sm = summary.get(m, {})
+            fig.add_trace(go.Bar(
+                name=labels.get(m, m).split("(")[0].strip(),
+                x=["Accuracy (%)"], y=[sm.get("accuracy", 0)],
+                marker_color=_COLORS_MAP.get(m, "#999"),
+                text=[f"{sm.get('accuracy', 0)}%"], textposition="auto",
+            ))
+        fig.update_layout(title="Accuracy Comparison", barmode="group",
+                          yaxis_range=[0, 105], height=350, margin=dict(t=40, b=30))
+        st.plotly_chart(fig, use_container_width=True, key=f"pres_acc_{section_key}")
+
+    with chart_col2:
+        lat_data = {m: summary.get(m, {}).get("avg_latency_ms") for m in models}
+        if any(v for v in lat_data.values()):
+            fig2 = go.Figure()
+            for m in models:
+                v = lat_data.get(m)
+                if v:
+                    fig2.add_trace(go.Bar(
+                        name=labels.get(m, m).split("(")[0].strip(),
+                        x=["Avg Latency (ms)"], y=[v],
+                        marker_color=_COLORS_MAP.get(m, "#999"),
+                        text=[f"{v:.0f}ms"], textposition="auto",
+                    ))
+            fig2.update_layout(title="Average Latency", barmode="group",
+                               height=350, margin=dict(t=40, b=30))
+            st.plotly_chart(fig2, use_container_width=True, key=f"pres_lat_{section_key}")
+
+    # Token & Cost metrics
+    tok_data = {m: summary.get(m, {}).get("avg_tokens_per_query", 0) for m in models}
+    cost_data = {m: summary.get(m, {}).get("cost_per_1k_queries_usd", 0) for m in models}
+    if any(tok_data.values()):
+        st.markdown("---")
+        tok_cols = st.columns(len(models))
+        for col, m in zip(tok_cols, models):
+            sm = summary.get(m, {})
+            with col:
+                st.metric(
+                    labels.get(m, m).split("(")[0].strip(),
+                    f"{sm.get('avg_tokens_per_query', 0):,} tok/query",
+                )
+                cost = sm.get("cost_per_1k_queries_usd", 0)
+                st.caption(f"Cost/1K queries: ${cost:.4f}")
+                tps = sm.get("avg_throughput_tps")
+                if tps:
+                    st.caption(f"Throughput: {tps:,.0f} tok/s")
+
+    # F1 (sentiment) or MAPE (numerical)
+    f1_data = {m: summary.get(m, {}).get("f1_macro") for m in models}
+    mape_data = {m: summary.get(m, {}).get("mape") for m in models}
+
+    if any(v is not None for v in f1_data.values()):
+        st.markdown("---")
+        st.markdown("##### F1 Score & Precision / Recall")
+        f1_cols = st.columns(len(models))
+        for col, m in zip(f1_cols, models):
+            sm = summary.get(m, {})
+            with col:
+                st.metric(labels.get(m, m).split("(")[0].strip(),
+                          f"F1: {sm.get('f1_macro', 0):.3f}")
+                st.caption(f"P: {sm.get('precision_macro', 0):.3f} / R: {sm.get('recall_macro', 0):.3f}")
+
+    if any(v is not None for v in mape_data.values()):
+        st.markdown("---")
+        st.markdown("##### Mean Absolute Percentage Error")
+        mape_cols = st.columns(len(models))
+        for col, m in zip(mape_cols, models):
+            sm = summary.get(m, {})
+            with col:
+                mape = sm.get("mape", 0)
+                st.metric(labels.get(m, m).split("(")[0].strip(),
+                          f"MAPE: {mape:.1f}%" if mape else "N/A")
+
+    # Category breakdown
+    cat_data = {k: v for k, v in summary.items() if k.startswith("category_")}
+    if cat_data:
+        st.markdown("---")
+        import pandas as pd
+        cat_rows = []
+        for key in sorted(cat_data.keys()):
+            val = cat_data[key]
+            cat_name = key.replace("category_", "").replace("_", " ").title()
+            row = {"Category": cat_name, "Cases": val["total"]}
+            for m in models:
+                row[labels.get(m, m).split("(")[0].strip()] = f"{val.get(f'{m}_accuracy', 0)}%"
+            cat_rows.append(row)
+        with st.expander("Category Breakdown"):
+            st.table(pd.DataFrame(cat_rows))
+
+
+def slide_benchmark_overview():
+    """Benchmark Experiments Overview"""
+    import pandas as pd
+    st.markdown('<p class="slide-title">Benchmark Results</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">Every number measured by running our actual models</p>', unsafe_allow_html=True)
+
+    ts = _benchmark_data.get("timestamp", "not yet run")
+    st.caption(f"Results from: {ts}")
+
+    st.table(pd.DataFrame([
+        {"Experiment": "Section 1", "Architecture": "BERT-base (110M)", "Approaches": "Base, FinBERT, RAG, Hybrid", "Task": "Sentiment classification"},
+        {"Experiment": "Section 2", "Architecture": "Llama2-7B (7B)", "Approaches": "Base, FinQA-7B, RAG, Hybrid", "Task": "Numerical reasoning"},
+        {"Experiment": "Section 3", "Architecture": "Llama2-7B (7B)", "Approaches": "Base, FinQA-7B, RAG, Hybrid", "Task": "Financial ratio calculation"},
+    ]))
+
+    st.markdown("""
+    <div class="blue-box">
+    <strong>Methodology:</strong> Each experiment uses the <strong>same architecture and parameter count</strong>.
+    The only variable is the approach (base, fine-tuned, RAG, or hybrid).
+    All results measured in our environment with our models.
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def slide_benchmark_sentiment():
+    """Benchmark: BERT 110M Sentiment"""
+    _render_benchmark_section(
+        "bert_110m_sentiment",
+        "Benchmark: BERT 110M -- Sentiment Classification",
+        {"base": "Base BERT", "finbert": "FinBERT (fine-tuned)",
+         "rag": "BERT + RAG", "hybrid": "FinBERT + RAG"},
+    )
+
+
+def slide_benchmark_numerical():
+    """Benchmark: Llama2 7B Numerical Reasoning"""
+    _render_benchmark_section(
+        "llama2_7b_numerical",
+        "Benchmark: Llama2 7B -- Numerical Reasoning",
+        {"base": "Base Llama2-7B", "finetuned": "FinQA-7B (fine-tuned)",
+         "rag": "Llama2-7B + RAG", "hybrid": "FinQA-7B + RAG"},
+    )
+
+
+def slide_benchmark_ratios():
+    """Benchmark: Llama2 7B Financial Ratios"""
+    _render_benchmark_section(
+        "llama2_7b_financial_ratios",
+        "Benchmark: Llama2 7B -- Financial Ratios",
+        {"base": "Base Llama2-7B", "finetuned": "FinQA-7B (fine-tuned)",
+         "rag": "Llama2-7B + RAG", "hybrid": "FinQA-7B + RAG"},
+    )
+
+
+def slide_benchmark_summary():
+    """Benchmark: All Experiments at a Glance"""
+    import plotly.graph_objects as go
+    st.markdown('<p class="slide-title">All Experiments at a Glance</p>', unsafe_allow_html=True)
+
+    sections = _benchmark_data.get("sections", {})
+    if not sections:
+        st.warning("No benchmark data available. Run the benchmarks first.")
+        return
+
+    section_info = [
+        ("bert_110m_sentiment", "Sentiment (BERT 110M)",
+         {"base": "Base", "finbert": "FinBERT", "rag": "RAG", "hybrid": "Hybrid"}),
+        ("llama2_7b_numerical", "Numerical (Llama2 7B)",
+         {"base": "Base", "finetuned": "FinQA-7B", "rag": "RAG", "hybrid": "Hybrid"}),
+        ("llama2_7b_financial_ratios", "Fin. Ratios (Llama2 7B)",
+         {"base": "Base", "finetuned": "FinQA-7B", "rag": "RAG", "hybrid": "Hybrid"}),
+    ]
+
+    # Grouped bar chart: accuracy across all experiments
+    fig = go.Figure()
+    approach_names = ["base", "finetuned", "rag", "hybrid"]
+    approach_labels = {"base": "Base", "finetuned": "Fine-Tuned", "rag": "RAG", "hybrid": "Hybrid"}
+
+    for approach in approach_names:
+        accs = []
+        exp_names = []
+        for sec_key, sec_label, _ in section_info:
+            sec = sections.get(sec_key, {})
+            summary = sec.get("summary", {})
+            # For sentiment, "finetuned" maps to "finbert"
+            m = approach
+            if sec_key == "bert_110m_sentiment" and approach == "finetuned":
+                m = "finbert"
+            sm = summary.get(m, {})
+            accs.append(sm.get("accuracy", 0))
+            exp_names.append(sec_label)
+
+        fig.add_trace(go.Bar(
+            name=approach_labels.get(approach, approach),
+            x=exp_names, y=accs,
+            marker_color=_COLORS_MAP.get(approach, "#999"),
+            text=[f"{a}%" for a in accs], textposition="auto",
+        ))
+
+    fig.update_layout(
+        title="Accuracy Across All Experiments",
+        barmode="group", yaxis_range=[0, 105],
+        height=450, margin=dict(t=50, b=30),
+    )
+    st.plotly_chart(fig, use_container_width=True, key="pres_summary_all")
+
+    st.markdown("""
+    <div class="green-box">
+    <strong>Key Insight:</strong> Fine-tuning consistently outperforms base models across all experiments.
+    The hybrid approach (fine-tuning + RAG) provides the best or near-best results in every category.
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------------------------
 # Slide registry
 # ---------------------------------------------------------------------------
 SLIDES = [
@@ -1754,6 +2010,11 @@ SLIDES = [
     ("The Hybrid Approach", slide_hybrid),
     ("Cost & ROI", slide_cost_roi),
     ("Key Takeaways", slide_key_takeaways),
+    ("Benchmark Overview", slide_benchmark_overview),
+    ("Benchmark: Sentiment", slide_benchmark_sentiment),
+    ("Benchmark: Numerical", slide_benchmark_numerical),
+    ("Benchmark: Financial Ratios", slide_benchmark_ratios),
+    ("Benchmark: Summary", slide_benchmark_summary),
     ("Live Demo", slide_demo_intro),
 ]
 
