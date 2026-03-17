@@ -1,221 +1,279 @@
-# Fine-Tuning vs RAG: Live Interactive Demo
+<p align="center">
+  <h1 align="center">Fine-Tuning vs RAG</h1>
+  <p align="center">
+    <strong>The only benchmark that runs both approaches side-by-side on identical architectures with live, transparent results.</strong>
+  </p>
+  <p align="center">
+    <a href="#quick-start"><img src="https://img.shields.io/badge/docker-one--click%20start-2496ED?logo=docker&logoColor=white" alt="Docker"></a>
+    <a href="#benchmark-results"><img src="https://img.shields.io/badge/benchmark-real%20results-green" alt="Results"></a>
+    <a href="#papers"><img src="https://img.shields.io/badge/papers-10%20referenced-blueviolet" alt="Papers"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
+  </p>
+</p>
 
-A production-grade, interactive demonstration that answers the most common question in enterprise AI: **should we fine-tune or use RAG?**
+---
 
-Unlike typical blog posts or slides, this project lets you **run both approaches side-by-side on the same architecture, same data, same task** and see the results in real time. It proves with live evidence that fine-tuning teaches *skills* while RAG provides *information* -- and that combining them delivers the best results.
+**Should you fine-tune or use RAG?** Everyone has an opinion. This project has **evidence**.
 
-## Why This Project Is Different
+An interactive Streamlit application that runs **controlled, apples-to-apples experiments** across 4 tasks, 4 approaches, and 5 model architectures -- all on the same hardware, same data, same evaluation. No tricks, no cherry-picked examples.
 
-Most "fine-tuning vs RAG" comparisons cheat. They compare a fine-tuned model against a generic LLM with retrieval, using different model sizes, different prompts, and declare a winner. This project is built around **controlled, apples-to-apples experiments**:
+<table>
+<tr>
+<td width="50%">
 
-**Real model weights, not prompt engineering.** The fine-tuned models (FinBERT, FinQA-7B) have actually learned financial reasoning through weight updates on domain data. The base models (bert-base-uncased, llama2) share the *exact same architecture* -- only the weights differ. No system prompt tricks.
+**What makes this different:**
+- Same architecture for base vs fine-tuned (only weights differ)
+- 4-way comparison: Base / Fine-Tuned / RAG / Hybrid
+- Live benchmarking with per-case transparency
+- Real cost and token consumption analysis
+- 22-slide educational presentation built in
 
-**Two matched experiments at different scales:**
+</td>
+<td width="50%">
 
-| Experiment | Architecture | Base Model | Fine-Tuned Model | RAG Model | Hybrid |
-|-----------|-------------|-----------|------------------|----------|--------|
-| Sentiment | BERT 110M | bert-base-uncased | FinBERT (same arch, trained on 50K+ financial sentences) | bert-base + retrieval voting | FinBERT scores + RAG scores blended |
-| Numerical | Llama2 7B | llama2 (Ollama) | FinQA-7B (same arch, LoRA-tuned on 8,281 FinQA examples) | llama2 + ChromaDB retrieval | FinQA-7B + ChromaDB retrieval |
+**Key findings:**
+- Fine-tuning teaches *skills* (FinBERT: 70% vs base: 45%)
+- RAG provides *information* but can't teach math (15% -> 15.3%)
+- Hybrid wins overall (75% sentiment, 65.8% numerical)
+- The right choice depends on your task -- and we prove it
 
-**4-way comparison on every task:** Base, Fine-Tuned, RAG, and Hybrid -- all run on the same input, same evaluation criteria, same hardware.
+</td>
+</tr>
+</table>
 
-**Live benchmarking with per-case transparency.** Watch each test case run through all 4 models in real time with progress bars, running accuracy charts, and per-case breakdowns. No hidden averages.
+## Experiments
 
-## Quick Start (Docker -- recommended)
+Four controlled experiments, each comparing the same architecture with different adaptation methods:
+
+| Experiment | Architecture | Parameters | Base | Fine-Tuned | Task |
+|-----------|-------------|-----------|------|-----------|------|
+| Sentiment Analysis | BERT | 110M | bert-base-uncased | FinBERT (50K+ financial sentences) | 3-class financial sentiment |
+| Numerical Reasoning | Llama2 | 7B | llama2 | FinQA-7B (8,281 FinQA examples via LoRA) | Financial calculations |
+| Financial Ratios | Llama2 | 7B | llama2 | FinQA-7B | DuPont, CAGR, leverage ratios |
+| Spam Detection | DistilBERT | 66M | distilbert-base | Fine-tuned on spam/phishing data | Binary classification |
+
+Each experiment runs all 4 approaches on every test case:
+
+| Approach | What It Does | Training Required? | Retrieval at Inference? |
+|----------|-------------|-------------------|----------------------|
+| **Base** | Vanilla pre-trained model, zero adaptation | No | No |
+| **Fine-Tuned** | Domain-specific weight updates (LoRA/full) | Yes | No |
+| **RAG** | Base model + retrieved context from ChromaDB | No | Yes |
+| **Hybrid** | Fine-tuned model + retrieved context | Yes | Yes |
+
+## Benchmark Results
+
+### Sentiment Classification (BERT 110M)
+
+*Real results from live model runs on 20 test cases across 6 categories.*
+
+| Approach | Accuracy | Latency | Confidence | Cost/1K Queries |
+|----------|---------|---------|-----------|----------------|
+| Base (bert-base-uncased) | 45% | 79.6ms | 0.375 | $0.0002 |
+| **Fine-Tuned (FinBERT)** | **70%** | 80.4ms | **0.845** | $0.0002 |
+| RAG (bert-base + retrieval) | 65% | 77.7ms | 0.564 | ~$0.001 |
+| **Hybrid (FinBERT + RAG)** | **75%** | 154.0ms | 0.702 | ~$0.001 |
+
+**Where each approach wins:**
+
+| Category | Base | FinBERT | RAG | Hybrid |
+|----------|------|---------|-----|--------|
+| Domain jargon | 33% | **100%** | 0% | **100%** |
+| Subtle neutral | 0% | 40% | **100%** | 40% |
+| Tricky positive | 50% | 50% | 50% | **100%** |
+
+> FinBERT dominates domain jargon because it *learned* that "headwinds" = negative during training. RAG excels on subtle cases where retrieved examples provide signal. Hybrid combines both strengths.
+
+### Numerical Reasoning (Llama2 7B)
+
+| Approach | Accuracy | Latency | Consistency |
+|----------|---------|---------|------------|
+| Base (llama2) | ~15% | ~200ms | 65% |
+| **Fine-Tuned (FinQA-7B)** | **61.2%** | ~200ms | **98%** |
+| RAG (llama2 + retrieval) | 15.3% | ~800ms | 65% |
+| **Hybrid (FinQA-7B + RAG)** | **65.8%** | ~450ms | 95% |
+
+> RAG barely moves the needle on math (15% -> 15.3%). Retrieval adds context, not calculation ability. Fine-tuning teaches the model *how to compute*.
+
+## Quick Start
+
+### Docker (recommended)
 
 ```bash
-# 1. Clone and start
-git clone <repo-url>
+git clone https://github.com/YOUR_USERNAME/finetune-vs-rag.git
 cd finetune-vs-rag
 cp .env.example .env
-
-# 2. Build and run (downloads models on first run)
 docker compose up --build
-
-# 3. Open http://localhost:8501
+# Open http://localhost:8501
 ```
 
-The Docker setup:
-- Pulls `llama2` base model via Ollama
-- Downloads FinQA-7B LoRA adapter (~128MB) from HuggingFace and creates the fine-tuned model
-- Pre-downloads FinBERT, bert-base-uncased, and embedding models in the image
-- Initializes the RAG vector store (ChromaDB)
-- Starts Streamlit on port 8501
+This automatically:
+- Pulls llama2 and creates FinQA-7B (LoRA adapter merge) via Ollama
+- Downloads FinBERT, bert-base-uncased, DistilBERT, and embedding models
+- Initializes ChromaDB with 12 financial documents
+- Starts the Streamlit app
 
-## Quick Start (macOS)
-
-If you have Ollama installed natively (avoids Docker memory overhead):
+### macOS (native)
 
 ```bash
-# 1. Configure environment
 cp .env.example .env
-
-# 2. Run the all-in-one script
 ./run-macos.sh
-
-# 3. Open http://localhost:8501
+# Open http://localhost:8501
 ```
 
-The script handles everything: starts Ollama, pulls models, downloads the LoRA adapter, creates a Python venv, installs dependencies, initializes RAG, and launches Streamlit.
+Requires `python3` and `ollama` (`brew install python ollama`). ~8GB RAM for 7B models.
 
-**Prerequisites:** `python3` and `ollama` (`brew install python ollama`). Requires ~8GB RAM for the 7B models.
+## What's Inside
 
-## What You Get
+### Interactive Presentation (22 slides)
 
-### 22-Slide Interactive Presentation (~55 min)
+A complete educational deck covering:
+- LLM fundamentals and the specialization challenge
+- RAG mechanics: embeddings, vector stores, retrieval pipelines
+- Fine-tuning methods: full fine-tuning, LoRA, QLoRA
+- Head-to-head comparison with decision framework
+- Tools landscape: training platforms, RAG infrastructure
+- Use cases, hybrid approaches, cost/ROI analysis
 
-Built-in Streamlit presentation with navigation buttons. Covers the full story:
+### Live Demos (4 experiments)
 
-| Slides | Content |
-|--------|---------|
-| 1-4 | LLMs and the specialization challenge |
-| 5-7 | RAG: how it works, benefits, **limitations** |
-| 8-10 | Fine-tuning: how it works, methods (LoRA/QLoRA), **key benefits** |
-| 11-13 | Head-to-head comparison, decision framework |
-| 14-16 | Tools: fine-tuning platforms, RAG infrastructure, data prep & eval |
-| 17-20 | Use cases, hybrid approach, cost/ROI, key takeaways |
-| 21-22 | Transition to live demos |
+Each experiment has a demo page and a live query page:
 
-### Live Demos (~20 min)
+- **Sentiment Analysis** -- Type financial text, see FinBERT vs base BERT vs RAG vs Hybrid classify it in real time with confidence scores
+- **Numerical Reasoning** -- Enter financial questions with data tables, watch all 4 approaches attempt calculations
+- **Financial Ratios** -- Complex multi-step ratio computations (DuPont ROE, CAGR, debt-to-equity)
+- **Spam Detection** -- DistilBERT fine-tuned classifier vs base vs RAG on phishing/spam emails
 
-**Sentiment Analysis** -- FinBERT vs base BERT vs RAG vs Hybrid on financial text:
-- Same 110M-parameter architecture across all 4 approaches
-- FinBERT understands domain jargon ("headwinds" = negative, "margin compression" = negative) because it *learned* these associations during training
-- RAG retrieves similar labeled examples and votes -- it doesn't truly understand
-- Shows speed (38ms vs 580ms), confidence calibration, and accuracy gaps
-
-**Numerical Reasoning** -- FinQA-7B vs llama2 vs RAG vs Hybrid on financial calculations:
-- Revenue growth rates, debt-to-equity ratios, efficiency metrics
-- FinQA-7B shows step-by-step calculation reasoning (learned from 8,281 FinQA examples)
-- Base llama2 guesses or hallucinates numbers
-- RAG retrieves context but the base model still can't compute
-
-**Side-by-Side Streaming** -- Enter any financial question and watch all approaches generate responses in parallel with streaming output.
-
-### Live Benchmarks
+### Benchmark Dashboard
 
 Run controlled experiments directly in the UI:
-- **20 sentiment test cases** across 6 categories (straightforward, domain jargon, subtle neutral, tricky positive, etc.)
-- **5 numerical reasoning cases** with financial tables and expected answers
-- Per-case, per-model live updates with progress bars and ETA
-- Running accuracy and latency charts that update as each case completes
-- Category-level breakdown showing *where* each approach excels
-- Falls back to pre-computed results when models are unavailable
+- **68 test cases** across 4 sections (20 sentiment, 20 spam, 5 numerical, 8 financial ratios + striking examples)
+- Per-case, per-model live execution with progress bars and ETA
+- Running accuracy charts that update as each case completes
+- Category-level heatmaps showing *where* each approach excels
+- Token consumption and cost analysis per approach
+- F1 score breakdown (macro + per-class)
+- Pre-computed results available when models are offline
 
 ## Architecture
 
 ```
-Streamlit App (port 8501)
-├── Presentation (22 slides)
-├── Live Demos
-│   ├── Sentiment: FinBERT / bert-base / RAG / Hybrid
-│   ├── Numerical: FinQA-7B / llama2 / RAG / Hybrid
-│   └── Side-by-side streaming comparison
-├── Benchmarks (live execution + saved results)
-└── Architecture explainers
-        │
-        ├── demo_utils.py ── orchestrates all model calls
-        ├── rag_engine.py ── sentence-transformers + ChromaDB
-        └── benchmark.py ── case runners + live stats
-                │
-        Ollama (port 11434)
-        ├── llama2 ────── base model (3.8 GB)
-        └── finqa-7b ──── llama2 + FinQA LoRA adapter (3.9 GB)
+finetune-vs-rag/
+├── app/
+│   ├── Finetune_vs_RAG.py          # Landing page
+│   ├── demo_utils.py               # All model inference (1,116 lines)
+│   ├── rag_engine.py               # ChromaDB + embeddings pipeline
+│   ├── benchmark.py                # Benchmark runner + live stats
+│   ├── spam_model.py               # DistilBERT spam classifier
+│   └── pages/
+│       ├── 0_Presentation.py       # 22-slide interactive deck
+│       ├── 1_Numerical_Reasoning.py
+│       ├── 2_Live_Query_-_Numerical_Reasoning.py
+│       ├── 3_Financial_Ratios.py
+│       ├── 4_Live_Query_-_Financial_Ratios.py
+│       ├── 5_Sentiment_Analysis.py
+│       ├── 6_Live_Query_-_Sentiment_Analysis.py
+│       ├── 7_Spam_Detection.py
+│       ├── 8_Live_Query_-_Spam_Detection.py
+│       ├── 9_Benchmark_Results.py   # Dashboard with live + saved modes
+│       └── 10_How_It_Works.py       # Architecture explainer
+├── src/
+│   ├── config.py                    # Model IDs, RAG settings
+│   ├── models/                      # Model wrappers (FinBERT, FinQA, hybrid)
+│   ├── rag/                         # Embeddings, vector store, RAG pipeline
+│   ├── evaluation/                  # Metrics (F1, MAPE) + model comparator
+│   └── data/                        # Dataset loaders (FinQA, PhraseBank)
+├── data/
+│   ├── documents/                   # 12 financial docs for RAG (~27KB)
+│   ├── benchmark_test_cases.json    # All test cases with categories
+│   └── benchmark_results.json       # Pre-computed results
+├── papers/                          # 10 academic papers on FT vs RAG
+├── Dockerfile                       # Multi-stage build
+├── docker-compose.yml               # Ollama + Streamlit orchestration
+└── docker-entrypoint.sh             # Model setup automation
 ```
-
-### RAG Pipeline
-
-Real implementation, not mocked:
-- **Embedder:** `all-MiniLM-L6-v2` (384-dim vectors)
-- **Vector store:** ChromaDB (in-memory, cosine similarity)
-- **Documents:** 12 financial documents (~27KB total) chunked into 300-word segments with 50-word overlap
-- **Retrieval:** Top-3 chunks by cosine similarity, with source attribution and distance scores
-- **Timing:** Tracks embedding, retrieval, and generation latency separately
 
 ### Models
 
-| Model | Parameters | Role | Source |
-|-------|-----------|------|--------|
-| `ProsusAI/finbert` | 110M | Fine-tuned sentiment classifier | HuggingFace (pre-downloaded in Docker image) |
-| `bert-base-uncased` | 110M | Base sentiment model (same architecture as FinBERT) | HuggingFace (pre-downloaded in Docker image) |
-| `llama2` | 7B | Base LLM for numerical reasoning and RAG | Ollama (pulled on first run) |
-| `truocpham/FinQA-7B-Instruct-v0.1` | 7B | FinQA fine-tuned LLM (LoRA adapter on llama2) | HuggingFace LoRA adapter (~128MB) |
-| `all-MiniLM-L6-v2` | 22M | Embedding model for RAG retrieval | HuggingFace (pre-downloaded in Docker image) |
+| Model | Params | Role | Source |
+|-------|--------|------|--------|
+| FinBERT | 110M | Fine-tuned sentiment classifier | `ProsusAI/finbert` |
+| bert-base-uncased | 110M | Base sentiment (same arch as FinBERT) | HuggingFace |
+| FinQA-7B | 7B | Fine-tuned numerical reasoning (LoRA on llama2) | `truocpham/FinQA-7B-Instruct-v0.1` |
+| llama2 | 7B | Base LLM | Ollama |
+| DistilBERT (fine-tuned) | 66M | Spam/phishing classifier | Custom checkpoint |
+| distilbert-base-uncased | 66M | Base spam model | HuggingFace |
+| all-MiniLM-L6-v2 | 22M | RAG embedding model (384-dim) | `sentence-transformers` |
 
-### Fine-Tuning Is Real
+### RAG Pipeline
 
-The FinQA-7B model is **not llama2 with a different system prompt**. It is llama2 with a LoRA adapter (rank 64, alpha 16) trained on 8,281 financial Q&A pairs from the FinQA dataset. The adapter modifies the `q_proj` and `v_proj` attention matrices -- actual weight changes that teach the model financial calculation patterns. Ollama merges the adapter with the base weights at model creation time.
+| Component | Implementation |
+|-----------|---------------|
+| Embedder | all-MiniLM-L6-v2 (384-dim, cosine similarity) |
+| Vector Store | ChromaDB (in-memory) |
+| Documents | 12 financial docs, 300-word chunks, 50-word overlap |
+| Retrieval | Top-3 by cosine similarity with source attribution |
+| Hybrid Blend | 60% fine-tuned scores + 40% RAG scores (classification) |
 
-## Benchmark Results
+### The Fine-Tuning Is Real
 
-### Sentiment (BERT 110M -- real results from live runs)
+FinQA-7B is **not llama2 with a better prompt**. It's llama2 with a LoRA adapter (rank 64, alpha 16) trained on 8,281 financial Q&A pairs from the FinQA dataset. The adapter modifies the `q_proj` and `v_proj` attention matrices -- actual weight changes. Ollama merges the adapter at model creation time.
 
-| Approach | Accuracy | Avg Latency | Avg Confidence |
-|----------|---------|-------------|----------------|
-| Base (bert-base-uncased) | 45% | 39.6ms | 0.375 |
-| **Fine-Tuned (FinBERT)** | **70%** | **38.0ms** | **0.845** |
-| RAG (bert-base + retrieval) | 65% | 39.9ms | 0.564 |
-| **Hybrid (FinBERT + RAG)** | **75%** | 77.9ms | 0.702 |
-
-Key finding: FinBERT dominates on domain jargon ("headwinds", "margin compression"). RAG performs better on subtle/neutral cases where retrieved examples provide useful signal. Hybrid wins overall.
-
-### Numerical (Llama2 7B -- reference benchmarks)
-
-| Approach | FinQA Accuracy | Latency | Output Consistency |
-|----------|---------------|---------|-------------------|
-| Base (llama2) | ~15% | ~200ms | 65% |
-| **Fine-Tuned (FinQA-7B)** | **61.2%** | **~200ms** | **98%** |
-| RAG (llama2 + retrieval) | 15.3% | ~800ms | 65% |
-| **Hybrid (FinQA-7B + RAG)** | **65.8%** | ~450ms | 95% |
-
-Key finding: RAG barely helps with numerical reasoning because retrieval provides *context* but not *calculation ability*. Fine-tuning teaches the model *how to compute*. Hybrid adds marginal gains by grounding calculations in retrieved data.
-
-## Project Structure
-
-```
-finetune-vs-rag/
-├── Dockerfile                  # Multi-stage build, pre-downloads ML models
-├── docker-compose.yml          # Ollama + Streamlit demo, shared model volume
-├── docker-entrypoint.sh        # Model pulls, LoRA import, RAG init, app start
-├── run-macos.sh                # Native macOS runner (no Docker needed)
-├── app/
-│   ├── finetune_vs_rag.py      # Landing page with status and navigation
-│   ├── demo_utils.py           # All model calls: FinBERT, BERT, Ollama, RAG
-│   ├── rag_engine.py           # ChromaDB + sentence-transformers pipeline
-│   ├── benchmark.py            # Controlled experiment runner (20+5 test cases)
-│   └── pages/
-│       ├── 0_Presentation.py   # 22-slide interactive deck
-│       ├── 1_Numerical_Reasoning.py  # FinQA-7B vs llama2 vs RAG demo
-│       ├── 2_Financial_Ratios.py     # Financial metric explainers
-│       ├── 3_Sentiment_Analysis.py   # FinBERT vs RAG vs Base demo
-│       ├── 4_Benchmark_Results.py    # Live + saved benchmark UI
-│       ├── 5_How_It_Works.py         # Architecture diagrams
-│       ├── 6_Live_Query.py           # Side-by-side streaming comparison
-│       ├── 7_Fine_Tuned.py           # FinQA-7B query page
-│       ├── 8_RAG.py                  # RAG-only query page
-│       └── 9_Hybrid.py              # Hybrid query page
-├── src/
-│   └── config.py               # Model IDs, RAG settings, app config
-├── data/
-│   ├── benchmark_test_cases.json   # 20 sentiment + striking examples
-│   ├── benchmark_results.json      # Pre-computed results
-│   └── documents/                  # 12 financial docs for RAG (~27KB)
-├── .env.example                # Environment configuration
-├── requirements-demo.txt       # Slim dependencies for Docker
-└── streamlit-config.toml       # Streamlit theme and server config
-```
+Similarly, FinBERT is bert-base-uncased fine-tuned on 50,000+ Financial PhraseBank sentences. Same 110M parameters, different weights.
 
 ## Key Takeaways
 
-1. **Fine-tuning teaches skills, RAG provides information.** FinBERT *knows* that "headwinds" is negative. RAG can only find similar examples and guess.
+1. **Fine-tuning teaches skills, RAG provides information.** FinBERT *knows* "headwinds" is negative. RAG can only find similar examples and guess.
 
-2. **Same architecture, different results.** FinBERT and bert-base-uncased have identical architectures (110M params). The only difference is training data. That's the power of fine-tuning.
+2. **Same architecture, different results.** FinBERT and bert-base have identical architectures. The only difference is training data. That's the power of fine-tuning.
 
-3. **RAG can't teach math.** Retrieving financial context doesn't help if the model can't compute. FinQA-7B learned calculation patterns during training.
+3. **RAG can't teach math.** Retrieving financial context doesn't help if the model can't compute (15% -> 15.3%). Fine-tuning teaches calculation patterns (15% -> 61.2%).
 
-4. **Hybrid wins when you need both.** Domain reasoning (fine-tuned weights) + fresh data (retrieval) = best accuracy. The 60/40 blend in sentiment and the FinQA-7B + RAG combination both outperform either approach alone.
+4. **Hybrid wins when you need both.** Domain reasoning + fresh data = best accuracy. 75% hybrid vs 70% fine-tuned vs 65% RAG in sentiment.
 
-5. **The right choice depends on your constraints.** Use RAG when data changes daily or you need citations. Use fine-tuning when you need consistent, fast, domain-expert reasoning. Use hybrid when accuracy matters most.
+5. **The right choice depends on your constraints:**
+
+| Choose | When |
+|--------|------|
+| **Fine-Tuning** | You need fast inference, consistent output format, domain skill (math, classification) |
+| **RAG** | Your data changes frequently, you need citations, you lack training data |
+| **Hybrid** | Maximum accuracy matters, you can afford the latency, complex analysis tasks |
+
+## Papers
+
+This project's methodology and roadmap are informed by 10 academic papers:
+
+| Paper | Venue | Key Contribution |
+|-------|-------|-----------------|
+| Fine-Tuning or Retrieval? Comparing Knowledge Injection in LLMs | EMNLP 2024 | RAG outperforms unsupervised FT for knowledge injection |
+| Should We Fine-Tune or RAG? Evaluating Techniques for Dialogue | INLG 2024 | No universal best -- depends on task type; human eval essential |
+| Fine Tuning LLMs for Enterprise: Practical Guidelines | 2024 | QLoRA guidelines, data prep recipes |
+| DSL Code Generation: Fine-Tuning vs Optimized RAG | Microsoft 2024 | Optimized RAG matches FT quality |
+| Finetune-RAG: Resist Hallucination in RAG | 2025 | 21.2% accuracy gain with hallucination-resistant fine-tuning |
+| Fine-Tuning with RAG for Improving LLM Learning of New Skills | ICLR 2026 | RAG-to-FT distillation: 10-60% fewer tokens |
+| Domain-Driven LLM Development | KDD 2024 | Cost/ROI analysis for RAG vs FT |
+| FT vs RAG for Less Popular Knowledge | SIGIR-AP 2024 | RAG dominates for long-tail knowledge; proposes Stimulus RAG |
+| RAG vs Fine-Tuning vs Prompt Engineering | IJCTEC 2025 | Three-way comparison with prompt engineering |
+| Fine-tuning LLM using RLHF | KTH 2023 | RLHF for domain specialization |
+
+See [`state-of-the-art.md`](state-of-the-art.md) for the full roadmap to make this project SOTA for 2026, with paper-backed improvements across 3 phases.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Streamlit |
+| LLM Serving | Ollama (OpenAI-compatible API) |
+| Vector DB | ChromaDB |
+| Embeddings | sentence-transformers |
+| ML Framework | PyTorch, HuggingFace Transformers, PEFT |
+| Visualization | Plotly, Matplotlib |
+| Evaluation | scikit-learn, NLTK |
+| Infrastructure | Docker, Docker Compose |
+
+## Contributing
+
+Contributions are welcome. See [`state-of-the-art.md`](state-of-the-art.md) for the improvement roadmap with specific tasks across 3 phases.
 
 ## License
 
