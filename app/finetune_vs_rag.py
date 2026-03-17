@@ -87,11 +87,11 @@ st.subheader("Quick Navigation")
 if st.button("Start Presentation", type="primary", use_container_width=True):
     st.switch_page("pages/0_Presentation.py")
 if st.button("Sentiment Demo", use_container_width=True):
-    st.switch_page("pages/3_Sentiment_Analysis.py")
+    st.switch_page("pages/5_Sentiment_Analysis.py")
 if st.button("Numerical Reasoning Demo", use_container_width=True):
     st.switch_page("pages/1_Numerical_Reasoning.py")
 if st.button("Benchmark Results", use_container_width=True):
-    st.switch_page("pages/4_Benchmark_Results.py")
+    st.switch_page("pages/9_Benchmark_Results.py")
 
 st.divider()
 
@@ -208,10 +208,15 @@ with st.sidebar:
     st.page_link("Finetune_vs_RAG.py", label="Home")
     st.page_link("pages/0_Presentation.py", label="Presentation Slides")
     st.page_link("pages/1_Numerical_Reasoning.py", label="Numerical Reasoning")
-    st.page_link("pages/2_Financial_Ratios.py", label="Financial Ratios")
-    st.page_link("pages/3_Sentiment_Analysis.py", label="Sentiment Analysis")
-    st.page_link("pages/4_Benchmark_Results.py", label="Benchmark Results")
-    st.page_link("pages/5_How_It_Works.py", label="How It Works")
+    st.page_link("pages/2_Live_Query_-_Numerical_Reasoning.py", label="  Live Query - Numerical")
+    st.page_link("pages/3_Financial_Ratios.py", label="Financial Ratios")
+    st.page_link("pages/4_Live_Query_-_Financial_Ratios.py", label="  Live Query - Financial Ratios")
+    st.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
+    st.page_link("pages/6_Live_Query_-_Sentiment_Analysis.py", label="  Live Query - Sentiment")
+    st.page_link("pages/7_Spam_Detection.py", label="Spam Detection")
+    st.page_link("pages/8_Live_Query_-_Spam_Detection.py", label="  Live Query - Spam")
+    st.page_link("pages/9_Benchmark_Results.py", label="Benchmark Results")
+    st.page_link("pages/10_How_It_Works.py", label="How It Works")
 
     st.divider()
 
