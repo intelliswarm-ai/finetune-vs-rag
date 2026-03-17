@@ -21,6 +21,28 @@
     {"id": "s19", "text": "Return on tangible common equity improved to 18.2% from 16.9% in the prior year.", "label": "positive", "category": "domain_specific"},
     {"id": "s20", "text": "The acquisition is expected to be modestly dilutive to earnings in the first year before becoming accretive.", "label": "neutral", "category": "tricky_mixed"}
   ],
+  "spam_detection": [
+    {"id": "sp01", "text": "Subject: Congratulations! You've won a $1,000,000 lottery prize! Click here to claim your reward now before it expires.", "label": "spam", "category": "obvious_spam"},
+    {"id": "sp02", "text": "Subject: Q4 Board Meeting Agenda\n\nHi team, attached is the agenda for our quarterly board meeting scheduled for March 25th. Please review the materials beforehand.", "label": "ham", "category": "business"},
+    {"id": "sp03", "text": "Subject: URGENT: Your account has been compromised\n\nDear valued customer, we detected suspicious activity on your account. Click the link below to verify your identity immediately or your account will be suspended within 24 hours.", "label": "spam", "category": "phishing"},
+    {"id": "sp04", "text": "Subject: Invoice #INV-2024-0847\n\nPlease find attached the invoice for consulting services rendered in February. Payment is due within 30 days per our agreement.", "label": "ham", "category": "business"},
+    {"id": "sp05", "text": "Subject: Make $5000 per day from home!\n\nDiscover the secret system that millionaires use to generate passive income. No experience needed. Limited spots available. Act now!", "label": "spam", "category": "obvious_spam"},
+    {"id": "sp06", "text": "Subject: Your prescription is ready for pickup\n\nHi, this is a reminder that your prescription is ready for pickup at Walgreens on Main St. Store hours: 8am-10pm.", "label": "ham", "category": "notification"},
+    {"id": "sp07", "text": "Subject: Verify your PayPal account now\n\nWe noticed unusual login activity on your account. Please confirm your account details by clicking the secure link below within 24 hours to avoid permanent suspension.", "label": "spam", "category": "phishing"},
+    {"id": "sp08", "text": "Subject: Team standup notes - March 14\n\nHere are the notes from today's standup. Action items are highlighted in bold. Let me know if I missed anything.", "label": "ham", "category": "business"},
+    {"id": "sp09", "text": "Subject: Lose 30 pounds in 30 days guaranteed!\n\nAmazing weight loss breakthrough! Doctors hate this one simple trick. Order now and get 50% off. No diet or exercise required!", "label": "spam", "category": "obvious_spam"},
+    {"id": "sp10", "text": "Subject: Your Amazon order has shipped\n\nYour order #112-4567890-1234567 has shipped and is expected to arrive by Tuesday. Track your package using the link in your Amazon account.", "label": "ham", "category": "notification"},
+    {"id": "sp11", "text": "Subject: Exclusive cryptocurrency investment opportunity\n\nDear investor, we have identified a guaranteed high-return opportunity. Invest $500 today and double your money in 48 hours. Reply now for exclusive access.", "label": "spam", "category": "scam"},
+    {"id": "sp12", "text": "Subject: Re: Project timeline update\n\nThanks for the update. I've adjusted the milestones in Jira accordingly. Can we sync tomorrow at 2pm to discuss the new dependencies?", "label": "ham", "category": "business"},
+    {"id": "sp13", "text": "Subject: Your Apple ID was used to sign in from a new device\n\nIf this wasn't you, your account may be compromised. Click here immediately to secure your account and reset your password before unauthorized access occurs.", "label": "spam", "category": "phishing"},
+    {"id": "sp14", "text": "Subject: Dinner reservation confirmation\n\nYour reservation for 4 guests on Saturday March 22 at 7:30 PM has been confirmed. Please call us if you need to make changes.", "label": "ham", "category": "notification"},
+    {"id": "sp15", "text": "Subject: YOU HAVE BEEN SELECTED as our grand prize winner\n\nDear lucky winner, you have been randomly selected to receive a FREE iPhone 15 Pro Max. Claim your prize now before the offer expires!", "label": "spam", "category": "obvious_spam"},
+    {"id": "sp16", "text": "Subject: Monthly engineering newsletter - March 2024\n\nThis month's highlights include new CI/CD pipeline improvements, tech debt reduction progress, and upcoming architecture review sessions.", "label": "ham", "category": "newsletter"},
+    {"id": "sp17", "text": "Subject: Important: Bank account verification required\n\nDear customer, your bank account requires immediate verification due to new regulatory requirements. Failure to verify within 12 hours will result in permanent account closure.", "label": "spam", "category": "phishing"},
+    {"id": "sp18", "text": "Subject: PTO request approved\n\nHi, your PTO request for March 28-31 has been approved by your manager. Please make sure to hand off any critical tasks before you leave.", "label": "ham", "category": "business"},
+    {"id": "sp19", "text": "Subject: Buy cheap medications online - 90% discount\n\nPrescription drugs at unbeatable prices. No prescription needed. Fast worldwide shipping. All major brands available. Order today!", "label": "spam", "category": "obvious_spam"},
+    {"id": "sp20", "text": "Subject: Can you review this PR?\n\nHey, I've opened PR #347 with the authentication middleware changes we discussed last week. When you get a chance, could you take a look?", "label": "ham", "category": "business"}
+  ],
   "striking_examples": {
     "finetuning_wins": [
       {

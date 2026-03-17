@@ -98,6 +98,21 @@ else
     echo "Fine-tuned model '${FT_MODEL}' already available."
 fi
 
+# -----------------------------------------------------------
+# 3. Download fine-tuned DistilBERT spam checkpoint if missing
+# -----------------------------------------------------------
+echo "Ensuring fine-tuned spam detector checkpoint is available..."
+if [ ! -f "models/spam_detector/checkpoint.pt" ]; then
+    echo "Spam model checkpoint not found, downloading..."
+    python3 -c "
+import sys; sys.path.insert(0, 'app')
+from download_spam_model import download_checkpoint
+download_checkpoint()
+" || echo "Spam model download failed. Run: python app/download_spam_model.py"
+else
+    echo "Spam model checkpoint already available."
+fi
+
 # Pre-initialize RAG (embed documents into ChromaDB)
 echo "Initializing RAG engine (embedding documents)..."
 python3 -c "

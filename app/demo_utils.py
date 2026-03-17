@@ -441,6 +441,287 @@ def run_rag_sentiment(text: str) -> RAGSentimentResult:
 
 
 # ---------------------------------------------------------------------------
+# DistilBERT Spam Detection (66M params)
+# ---------------------------------------------------------------------------
+# Base distilbert-base-uncased for spam detection (zero-shot cosine similarity)
+_SPAM_LABEL_PROTOTYPES = {
+    "spam": "scam fraud phishing lottery prize free money urgent verification click link suspicious",
+    "ham": "meeting project invoice team update schedule report review agenda confirmation",
+}
+_spam_proto_embeddings = None
+_distilbert_base_model = None
+_distilbert_base_tokenizer = None
+_distilbert_base_loaded = False
+_distilbert_base_load_attempted = False
+_spam_kb_embeddings = None
+
+# Labeled examples for RAG retrieval (spam knowledge base)
+SPAM_KNOWLEDGE_BASE = [
+    {"text": "Congratulations! You have won a $500 gift card. Click here to claim.", "label": "spam"},
+    {"text": "Your account has been suspended. Verify your identity immediately.", "label": "spam"},
+    {"text": "Make money fast! Work from home and earn $10,000 per week.", "label": "spam"},
+    {"text": "URGENT: Your PayPal account needs verification within 24 hours.", "label": "spam"},
+    {"text": "Free trial! Get premium access to our service. No credit card required.", "label": "spam"},
+    {"text": "Dear winner, you have been selected for an exclusive cash prize.", "label": "spam"},
+    {"text": "Buy discount medications online. No prescription needed.", "label": "spam"},
+    {"text": "Hi team, here are the meeting notes from yesterday's standup.", "label": "ham"},
+    {"text": "Your order has shipped and will arrive by Friday.", "label": "ham"},
+    {"text": "Please review the attached quarterly financial report.", "label": "ham"},
+    {"text": "Reminder: your dentist appointment is tomorrow at 3pm.", "label": "ham"},
+    {"text": "Thanks for submitting your pull request. I'll review it today.", "label": "ham"},
+    {"text": "Your flight confirmation for March 22. Boarding pass attached.", "label": "ham"},
+    {"text": "Monthly newsletter: product updates and engineering highlights.", "label": "ham"},
+    {"text": "Hi, can we reschedule our 1-on-1 to Thursday afternoon?", "label": "ham"},
+]
+
+
+def _load_distilbert_base():
+    """Load distilbert-base-uncased (same architecture as spam fine-tuned model, NOT fine-tuned)."""
+    global _distilbert_base_model, _distilbert_base_tokenizer, _distilbert_base_loaded
+    global _distilbert_base_load_attempted, _spam_kb_embeddings
+    if _distilbert_base_load_attempted:
+        return _distilbert_base_loaded
+    _distilbert_base_load_attempted = True
+    try:
+        from transformers import AutoTokenizer, AutoModel
+        import torch
+        model_id = "distilbert-base-uncased"
+        _distilbert_base_tokenizer = AutoTokenizer.from_pretrained(model_id)
+        _distilbert_base_model = AutoModel.from_pretrained(model_id)
+        _distilbert_base_model.eval()
+
+        # Pre-embed the spam knowledge base
+        _spam_kb_embeddings = _embed_texts_distilbert(
+            [ex["text"] for ex in SPAM_KNOWLEDGE_BASE]
+        )
+        _distilbert_base_loaded = True
+        print("[demo_utils] distilbert-base-uncased loaded for spam detection comparison")
+        return True
+    except Exception as e:
+        print(f"[demo_utils] Could not load distilbert-base-uncased: {e}")
+        return False
+
+
+def _embed_texts_distilbert(texts: List[str]):
+    """Get [CLS] embeddings from distilbert-base-uncased."""
+    import torch
+    inputs = _distilbert_base_tokenizer(
+        texts, return_tensors="pt", truncation=True,
+        max_length=512, padding=True,
+    )
+    with torch.no_grad():
+        outputs = _distilbert_base_model(**inputs)
+    cls_embeddings = outputs.last_hidden_state[:, 0, :]
+    return torch.nn.functional.normalize(cls_embeddings, dim=-1)
+
+
+def distilbert_base_available() -> bool:
+    return _load_distilbert_base()
+
+
+def run_base_distilbert_spam(text: str) -> SentimentResult:
+    """Classify spam using distilbert-base-uncased WITHOUT fine-tuning or RAG.
+
+    Zero-shot cosine similarity between text embedding and spam/ham prototypes.
+    Same architecture (DistilBERT 66M) as the fine-tuned spam detector.
+    """
+    import torch
+    if not _load_distilbert_base():
+        raise RuntimeError("distilbert-base-uncased not loaded")
+
+    global _spam_proto_embeddings
+    if _spam_proto_embeddings is None:
+        _spam_proto_embeddings = _embed_texts_distilbert(
+            list(_SPAM_LABEL_PROTOTYPES.values())
+        )
+
+    start = time.perf_counter()
+    query_emb = _embed_texts_distilbert([text])
+    similarities = torch.mm(query_emb, _spam_proto_embeddings.t())[0]
+    elapsed_ms = (time.perf_counter() - start) * 1000
+
+    input_tokens = len(_distilbert_base_tokenizer.encode(text))
+
+    labels = list(_SPAM_LABEL_PROTOTYPES.keys())
+    probs = torch.nn.functional.softmax(similarities * 5, dim=-1)  # temperature=0.2
+    scores = {labels[i]: round(probs[i].item(), 4) for i in range(len(labels))}
+    best_idx = probs.argmax().item()
+
+    return SentimentResult(
+        label=labels[best_idx],
+        confidence=round(probs[best_idx].item(), 4),
+        scores=scores,
+        latency_ms=round(elapsed_ms, 1),
+        model_name="distilbert-base-uncased (66M, no fine-tuning, no RAG)",
+        is_live=True,
+        input_tokens=input_tokens,
+    )
+
+
+# Fine-tuned DistilBERT spam detector (lazy loaded)
+_spam_detector = None
+_spam_detector_loaded = False
+_spam_detector_load_attempted = False
+
+
+def _load_spam_detector():
+    """Load the fine-tuned DistilBERT spam detector checkpoint."""
+    global _spam_detector, _spam_detector_loaded, _spam_detector_load_attempted
+    if _spam_detector_load_attempted:
+        return _spam_detector_loaded
+    _spam_detector_load_attempted = True
+    try:
+        from download_spam_model import CHECKPOINT_FILE, download_checkpoint
+        import torch
+
+        if not CHECKPOINT_FILE.exists():
+            print("[demo_utils] Spam checkpoint not found, attempting download...")
+            if not download_checkpoint():
+                print("[demo_utils] Could not download spam model checkpoint")
+                return False
+
+        from spam_model import SpamDetector
+        _spam_detector = SpamDetector(
+            checkpoint_path=str(CHECKPOINT_FILE),
+            device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+        )
+        _spam_detector_loaded = True
+        print("[demo_utils] Fine-tuned spam detector loaded successfully")
+        return True
+    except Exception as e:
+        print(f"[demo_utils] Could not load spam detector: {e}")
+        return False
+
+
+def spam_finetuned_available() -> bool:
+    return _load_spam_detector()
+
+
+def run_finetuned_distilbert_spam(text: str) -> SentimentResult:
+    """Run fine-tuned DistilBERT spam detector. Same 66M architecture, different weights."""
+    if not _load_spam_detector():
+        raise RuntimeError(
+            "Fine-tuned spam detector not loaded. "
+            "Run: python app/download_spam_model.py"
+        )
+    start = time.perf_counter()
+    result = _spam_detector.predict_single(text)
+    elapsed_ms = (time.perf_counter() - start) * 1000
+
+    return SentimentResult(
+        label=result["prediction"],
+        confidence=round(result["confidence"], 4),
+        scores={k: round(v, 4) for k, v in result["probabilities"].items()},
+        latency_ms=round(elapsed_ms, 1),
+        model_name="Fine-tuned DistilBERT (66M, spam-trained)",
+        is_live=True,
+        input_tokens=result["input_tokens"],
+    )
+
+
+def run_rag_spam(text: str) -> RAGSentimentResult:
+    """RAG spam detection using distilbert-base-uncased (66M, NOT fine-tuned).
+
+    Apples-to-apples comparison with fine-tuned spam detector:
+    - Same base architecture: DistilBERT (66M params)
+    - Same task: binary spam/ham classification
+    - Different approach: RAG retrieval + similarity voting vs fine-tuned classification
+    """
+    import torch
+    start = time.perf_counter()
+
+    if not _load_distilbert_base():
+        raise RuntimeError("distilbert-base-uncased not loaded")
+
+    # Step 1: Embed the query
+    retrieval_start = time.perf_counter()
+    query_emb = _embed_texts_distilbert([text])
+
+    # Step 2: Cosine similarity against spam knowledge base
+    similarities = torch.mm(query_emb, _spam_kb_embeddings.t())[0]
+    top_k = 5
+    top_indices = similarities.argsort(descending=True)[:top_k].tolist()
+    top_examples = [SPAM_KNOWLEDGE_BASE[i] for i in top_indices]
+    top_sims = [similarities[i].item() for i in top_indices]
+    retrieval_ms = (time.perf_counter() - retrieval_start) * 1000
+
+    # Step 3: Similarity-weighted vote
+    generation_start = time.perf_counter()
+    votes = {"spam": 0.0, "ham": 0.0}
+    for ex, sim in zip(top_examples, top_sims):
+        votes[ex["label"]] += sim
+
+    total_weight = sum(votes.values()) or 1.0
+    scores = {k: round(v / total_weight, 4) for k, v in votes.items()}
+    label = max(votes, key=votes.get)
+    confidence = scores[label]
+    generation_ms = (time.perf_counter() - generation_start) * 1000
+
+    total_ms = (time.perf_counter() - start) * 1000
+
+    # Token count: query + retrieved examples
+    input_tokens = len(_distilbert_base_tokenizer.encode(text))
+    for ex in top_examples:
+        input_tokens += len(_distilbert_base_tokenizer.encode(ex["text"]))
+
+    return RAGSentimentResult(
+        label=label,
+        confidence=round(confidence, 4),
+        scores=scores,
+        latency_ms=round(total_ms, 1),
+        model_name="distilbert-base-uncased + RAG (66M, not fine-tuned)",
+        retrieved_examples=[
+            {**ex, "similarity": round(sim, 3)}
+            for ex, sim in zip(top_examples, top_sims)
+        ],
+        retrieval_ms=round(retrieval_ms, 1),
+        generation_ms=round(generation_ms, 1),
+        is_live=True,
+        input_tokens=input_tokens,
+    )
+
+
+def run_hybrid_spam(text: str) -> SentimentResult:
+    """Hybrid spam detection: fine-tuned DistilBERT + RAG retrieval combined.
+
+    Same 66M DistilBERT architecture. Combines fine-tuned classification with
+    RAG retrieval (similarity voting), weighted 60/40 toward fine-tuning.
+    """
+    import torch
+    start = time.perf_counter()
+
+    ft_result = run_finetuned_distilbert_spam(text)
+    ft_scores = ft_result.scores
+
+    rag_result = run_rag_spam(text)
+    rag_scores = rag_result.scores
+
+    ft_weight, rag_weight = 0.6, 0.4
+    combined = {}
+    for label in ["spam", "ham"]:
+        combined[label] = round(
+            ft_weight * ft_scores.get(label, 0) +
+            rag_weight * rag_scores.get(label, 0),
+            4,
+        )
+
+    best_label = max(combined, key=combined.get)
+    elapsed_ms = (time.perf_counter() - start) * 1000
+
+    total_input_tokens = ft_result.input_tokens + rag_result.input_tokens
+
+    return SentimentResult(
+        label=best_label,
+        confidence=combined[best_label],
+        scores=combined,
+        latency_ms=round(elapsed_ms, 1),
+        model_name="Fine-tuned DistilBERT + RAG hybrid (66M)",
+        is_live=True,
+        input_tokens=total_input_tokens,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Non-streaming model calls (used by comparison pages)
 # ---------------------------------------------------------------------------
 def call_base_model(question: str, table: str = "", context: str = "") -> LLMResponse:
@@ -830,4 +1111,6 @@ def get_demo_status() -> Dict[str, str]:
         status["doc-rag"] = "live" if rag_ready() else "initializing"
     except Exception:
         status["doc-rag"] = "unavailable"
+    status["distilbert-base-spam"] = "live" if distilbert_base_available() else "unavailable"
+    status["distilbert-ft-spam"] = "live" if spam_finetuned_available() else "unavailable"
     return status

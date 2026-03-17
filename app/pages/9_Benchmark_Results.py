@@ -1,11 +1,12 @@
 """
 Benchmark Results Page
-Three controlled experiments, each comparing Base vs Fine-Tuned vs RAG vs Hybrid
+Four controlled experiments, each comparing Base vs Fine-Tuned vs RAG vs Hybrid
 on the SAME architecture.
 
 Section 1: BERT 110M (Sentiment) -- Base BERT vs FinBERT vs BERT+RAG vs Hybrid
 Section 2: Llama2 7B (Numerical)  -- Base Llama2 vs Expert prompt vs Llama2+RAG vs Hybrid
 Section 3: Llama2 7B (Financial Ratios) -- Base Llama2 vs FinQA-7B vs Llama2+RAG vs Hybrid
+Section 4: DistilBERT 66M (Spam Detection) -- Base DistilBERT vs Fine-tuned vs RAG vs Hybrid
 
 Supports both pre-loaded results and live real-time benchmark execution.
 """
@@ -23,7 +24,7 @@ st.set_page_config(page_title="Benchmark Results", page_icon="FT", layout="wide"
 
 st.title("Benchmark Results (Our Own Measurements)")
 st.markdown("""
-Three controlled experiments comparing **Base Model vs Fine-Tuned vs RAG vs Hybrid**.
+Four controlled experiments comparing **Base Model vs Fine-Tuned vs RAG vs Hybrid**.
 Each experiment uses the **same architecture and parameter count** so the
 only variable is the approach.
 
@@ -32,6 +33,7 @@ only variable is the approach.
 | **Section 1** | BERT-base (110M params) | Base, FinBERT, RAG, Hybrid | Sentiment classification |
 | **Section 2** | Llama2-7B (7B params) | Base, FinQA-7B, RAG (base), Hybrid (FinQA-7B+RAG) | Numerical reasoning |
 | **Section 3** | Llama2-7B (7B params) | Base, FinQA-7B, RAG (base), Hybrid (FinQA-7B+RAG) | Financial ratio calculation |
+| **Section 4** | DistilBERT (66M params) | Base, Fine-tuned, RAG, Hybrid | Spam detection |
 
 Every number was measured by running our actual models. Nothing from papers.
 """)
@@ -61,6 +63,13 @@ FINANCIAL_RATIO_LABELS = {
     "finetuned": "FinQA-7B (fine-tuned Llama2-7B)",
     "rag": "Llama2-7B + RAG (base model)",
     "hybrid": "FinQA-7B + RAG (fine-tuned + retrieval)",
+}
+
+SPAM_LABELS = {
+    "base": "Base DistilBERT (no FT, no RAG)",
+    "finetuned": "Fine-tuned DistilBERT (spam-trained)",
+    "rag": "DistilBERT + RAG (retrieval + voting)",
+    "hybrid": "Fine-tuned DistilBERT + RAG (hybrid)",
 }
 
 # Load pre-existing results
@@ -674,6 +683,114 @@ def run_live_financial_ratio_benchmark():
     return all_results
 
 
+def run_live_spam_benchmark():
+    """Run DistilBERT 66M spam detection benchmark with live per-case UI updates."""
+    import plotly.graph_objects as go
+    from benchmark import (
+        get_spam_cases, run_single_spam_case,
+        compute_live_stats, compute_section_summary,
+        SPAM_MODEL_NAMES,
+    )
+
+    cases = get_spam_cases()
+    models = SPAM_MODEL_NAMES
+    labels = SPAM_LABELS
+
+    st.subheader("DistilBERT 66M -- Spam Detection (LIVE)")
+    st.caption("Architecture: DistilBERT-base-uncased (66M parameters) -- same for all four approaches")
+
+    # Placeholders for live-updating widgets
+    progress = st.progress(0, text="Starting benchmark...")
+    metric_cols = st.columns(len(models))
+    metric_placeholders = {}
+    for col, m in zip(metric_cols, models):
+        with col:
+            metric_placeholders[m] = st.empty()
+            metric_placeholders[m].metric(labels[m], "0%", delta="0/0")
+
+    chart_placeholder = st.empty()
+    latency_chart_placeholder = st.empty()
+    table_placeholder = st.empty()
+
+    all_results = []
+    start_time = time.perf_counter()
+
+    for i, case in enumerate(cases):
+        progress.progress(
+            (i) / len(cases),
+            text=f"Running case {i+1}/{len(cases)}: {case['text'][:50]}..."
+        )
+
+        row = run_single_spam_case(case)
+        all_results.append(row)
+
+        # Update live stats
+        stats = compute_live_stats(all_results, models)
+
+        # Update metrics
+        for m in models:
+            s = stats[m]
+            metric_placeholders[m].metric(
+                labels[m],
+                f"{s['accuracy']}%",
+                delta=f"{s['correct']}/{s['total']}",
+            )
+
+        # Update accuracy chart
+        fig = go.Figure()
+        for m in models:
+            s = stats[m]
+            fig.add_trace(go.Bar(
+                name=labels[m], x=["Accuracy (%)"],
+                y=[s["accuracy"]],
+                marker_color=COLORS.get(m, "#999"),
+                text=[f"{s['accuracy']}%"], textposition="auto",
+            ))
+        fig.update_layout(
+            title=f"Accuracy after {len(all_results)}/{len(cases)} cases",
+            barmode="group", yaxis_range=[0, 105],
+        )
+        chart_placeholder.plotly_chart(fig, use_container_width=True)
+
+        # Update latency chart
+        fig2 = go.Figure()
+        for m in models:
+            s = stats[m]
+            if s["avg_latency_ms"]:
+                fig2.add_trace(go.Bar(
+                    name=labels[m], x=["Avg Latency (ms)"],
+                    y=[s["avg_latency_ms"]],
+                    marker_color=COLORS.get(m, "#999"),
+                    text=[f"{s['avg_latency_ms']:.0f}ms"], textposition="auto",
+                ))
+        fig2.update_layout(title="Average Latency (running)", barmode="group")
+        latency_chart_placeholder.plotly_chart(fig2, use_container_width=True)
+
+        # Update results table
+        table_rows = []
+        for r in all_results:
+            trow = {
+                "Text": r["text"][:55] + "...",
+                "Expected": r["expected"].upper(),
+            }
+            for m in models:
+                lbl = r.get(f"{m}_label", "?")
+                ok = "Y" if r.get(f"{m}_correct") else "N"
+                lat = r.get(f"{m}_latency_ms", 0)
+                short = labels[m].split("(")[0].strip()
+                trow[short] = f"{lbl} [{ok}] {lat:.0f}ms"
+            trow["Category"] = r.get("category", "")
+            table_rows.append(trow)
+        table_placeholder.dataframe(
+            pd.DataFrame(table_rows), use_container_width=True
+        )
+
+    elapsed = (time.perf_counter() - start_time) * 1000
+    progress.progress(1.0, text=f"Benchmark complete! ({elapsed:.0f}ms total)")
+
+    return all_results
+
+
 def _update_live_table(placeholder, rows, models, labels):
     """Render the results table, showing partial model results as they come in."""
     table_rows = []
@@ -696,10 +813,11 @@ def _update_live_table(placeholder, rows, models, labels):
 # =========================================================================
 # Main tabs
 # =========================================================================
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "BERT 110M (Sentiment)",
     "Llama2 7B (Numerical)",
     "Llama2 7B (Financial Ratios)",
+    "DistilBERT 66M (Spam)",
     "Striking Examples",
 ])
 
@@ -759,6 +877,16 @@ with tab1:
                         "architecture": "Llama2-7B (7B parameters)",
                         "models": ["base", "finetuned", "rag", "hybrid"],
                         "model_labels": FINANCIAL_RATIO_LABELS,
+                        "summary": {},
+                        "results": [],
+                    }
+                ),
+                "distilbert_66m_spam": existing_sections.get(
+                    "distilbert_66m_spam", {
+                        "title": "DistilBERT 66M -- Spam Detection",
+                        "architecture": "DistilBERT-base-uncased (66M parameters)",
+                        "models": ["base", "finetuned", "rag", "hybrid"],
+                        "model_labels": SPAM_LABELS,
                         "summary": {},
                         "results": [],
                     }
@@ -852,6 +980,16 @@ with tab2:
                             "architecture": "Llama2-7B (7B parameters)",
                             "models": ["base", "finetuned", "rag", "hybrid"],
                             "model_labels": FINANCIAL_RATIO_LABELS,
+                            "summary": {},
+                            "results": [],
+                        }
+                    ),
+                    "distilbert_66m_spam": existing_sections.get(
+                        "distilbert_66m_spam", {
+                            "title": "DistilBERT 66M -- Spam Detection",
+                            "architecture": "DistilBERT-base-uncased (66M parameters)",
+                            "models": ["base", "finetuned", "rag", "hybrid"],
+                            "model_labels": SPAM_LABELS,
                             "summary": {},
                             "results": [],
                         }
@@ -965,6 +1103,16 @@ with tab3:
                         "summary": ratio_summary,
                         "results": ratio_results,
                     },
+                    "distilbert_66m_spam": existing_sections.get(
+                        "distilbert_66m_spam", {
+                            "title": "DistilBERT 66M -- Spam Detection",
+                            "architecture": "DistilBERT-base-uncased (66M parameters)",
+                            "models": ["base", "finetuned", "rag", "hybrid"],
+                            "model_labels": SPAM_LABELS,
+                            "summary": {},
+                            "results": [],
+                        }
+                    ),
                 },
             }
             RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -1027,6 +1175,110 @@ with tab3:
             st.info("No saved results. Click **Run Live Benchmark** to generate them.")
 
 with tab4:
+    col_btn7, col_btn8 = st.columns(2)
+    with col_btn7:
+        run_live_spam = st.button(
+            "Run Live Benchmark (Spam Detection)",
+            type="primary", use_container_width=True,
+            key="live_spam",
+        )
+    with col_btn8:
+        show_saved_spam = st.button(
+            "Show Saved Results",
+            use_container_width=True,
+            key="saved_spam",
+        )
+
+    if run_live_spam:
+        spam_results = run_live_spam_benchmark()
+
+        # Save results
+        from benchmark import compute_section_summary, SPAM_MODEL_NAMES
+        spam_summary = compute_section_summary(spam_results, SPAM_MODEL_NAMES)
+
+        # Load existing data to preserve other sections
+        existing = {}
+        if RESULTS_PATH.exists():
+            with open(RESULTS_PATH) as f:
+                existing = json.load(f)
+
+        existing_sections = existing.get("sections", {})
+        output = {
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "sections": {
+                "bert_110m_sentiment": existing_sections.get(
+                    "bert_110m_sentiment", {
+                        "title": "BERT 110M -- Sentiment Classification",
+                        "architecture": "BERT-base-uncased (110M parameters)",
+                        "models": ["base", "finbert", "rag", "hybrid"],
+                        "model_labels": SENTIMENT_LABELS,
+                        "summary": {},
+                        "results": [],
+                    }
+                ),
+                "llama2_7b_numerical": existing_sections.get(
+                    "llama2_7b_numerical", {
+                        "title": "Llama2 7B -- Numerical Reasoning",
+                        "architecture": "Llama2-7B (7B parameters)",
+                        "models": ["base", "finetuned", "rag", "hybrid"],
+                        "model_labels": NUMERICAL_LABELS,
+                        "summary": {},
+                        "results": [],
+                    }
+                ),
+                "llama2_7b_financial_ratios": existing_sections.get(
+                    "llama2_7b_financial_ratios", {
+                        "title": "Llama2 7B -- Financial Ratios",
+                        "architecture": "Llama2-7B (7B parameters)",
+                        "models": ["base", "finetuned", "rag", "hybrid"],
+                        "model_labels": FINANCIAL_RATIO_LABELS,
+                        "summary": {},
+                        "results": [],
+                    }
+                ),
+                "distilbert_66m_spam": {
+                    "title": "DistilBERT 66M -- Spam Detection",
+                    "architecture": "DistilBERT-base-uncased (66M parameters)",
+                    "models": list(SPAM_MODEL_NAMES),
+                    "model_labels": SPAM_LABELS,
+                    "summary": spam_summary,
+                    "results": spam_results,
+                },
+            },
+        }
+        RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(RESULTS_PATH, "w") as f:
+            json.dump(output, f, indent=2)
+        st.success("Results saved!")
+
+    elif show_saved_spam or (not run_live_spam):
+        if results_data and "distilbert_66m_spam" in results_data.get("sections", {}):
+            sections = results_data["sections"]
+            timestamp = results_data.get("timestamp", "unknown")
+            st.caption(f"Saved results from: {timestamp}")
+            render_section(sections["distilbert_66m_spam"])
+
+            s = sections["distilbert_66m_spam"]["summary"]
+            base = s.get("base", {})
+            ft = s.get("finetuned", {})
+            rag = s.get("rag", {})
+            hyb = s.get("hybrid", {})
+
+            st.divider()
+            st.markdown(f"""
+            **Analysis (DistilBERT 66M, same architecture):**
+
+            - Base: **{base.get('accuracy',0)}%** | Fine-tuned: **{ft.get('accuracy',0)}%** | RAG: **{rag.get('accuracy',0)}%** | Hybrid: **{hyb.get('accuracy',0)}%**
+            - Fine-tuning teaches the model patterns of spam (urgency, phishing language, suspicious URLs)
+            - RAG retrieves similar labeled examples for comparison-based classification
+            - Hybrid combines fine-tuned classification with RAG retrieval for best coverage
+            - Base model uses zero-shot cosine similarity with no domain knowledge
+            - All four use identical DistilBERT-base 66M architecture -- difference is purely the approach
+            """)
+        else:
+            st.info("No saved results. Click **Run Live Benchmark** to generate them.")
+
+with tab5:
     st.subheader("Striking Examples")
 
     with open(TEST_CASES_PATH) as f:
@@ -1053,7 +1305,7 @@ with tab4:
 
 st.divider()
 st.markdown(
-    "All results measured in this environment. Three controlled experiments, "
+    "All results measured in this environment. Four controlled experiments, "
     "each comparing four approaches (base, fine-tuned, RAG, hybrid) while "
     "keeping architecture constant."
 )

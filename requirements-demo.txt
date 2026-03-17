@@ -22,5 +22,8 @@ openai>=1.0.0
 # HuggingFace Hub (download FinQA-7B for fine-tuned comparison)
 huggingface-hub>=0.20.0
 
+# Model checkpoint download (Google Drive)
+gdown>=4.7.1
+
 # Utilities
 python-dotenv>=1.0.0

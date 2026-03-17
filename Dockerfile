@@ -42,6 +42,13 @@ AutoTokenizer.from_pretrained('bert-base-uncased'); \
 AutoModel.from_pretrained('bert-base-uncased'); \
 print('bert-base-uncased downloaded')"
 
+# distilbert-base-uncased (~260MB, base architecture for spam detection benchmark)
+RUN python -c "\
+from transformers import AutoTokenizer, AutoModel; \
+AutoTokenizer.from_pretrained('distilbert-base-uncased'); \
+AutoModel.from_pretrained('distilbert-base-uncased'); \
+print('distilbert-base-uncased downloaded')"
+
 # sentence-transformers embedding model (~90MB)
 RUN python -c "\
 from sentence_transformers import SentenceTransformer; \
@@ -52,6 +59,13 @@ print('Embedding model downloaded')"
 COPY app/ app/
 COPY src/ src/
 COPY data/ data/
+
+# Download fine-tuned DistilBERT spam detector checkpoint from Google Drive (~260MB)
+RUN python -c "\
+import sys; sys.path.insert(0, 'app'); \
+from download_spam_model import download_checkpoint; \
+download_checkpoint() \
+" || echo "Spam model download will be attempted at runtime"
 
 # Streamlit config
 COPY streamlit-config.toml /root/.streamlit/config.toml

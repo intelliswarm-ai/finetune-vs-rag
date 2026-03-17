@@ -7,7 +7,7 @@ import streamlit as st
 st.set_page_config(page_title="How It Works", page_icon="FT", layout="wide")
 
 st.title("How It Works")
-st.markdown("Technical architecture behind each of the three benchmark experiments.")
+st.markdown("Technical architecture behind each of the four benchmark experiments.")
 
 # ==========================================================================
 # Experiment 1: BERT 110M Sentiment
@@ -342,6 +342,158 @@ The architectural diagrams are identical to Experiment 2 -- the difference is in
 st.divider()
 
 # ==========================================================================
+# Experiment 4: DistilBERT 66M Spam Detection
+# ==========================================================================
+st.header("Experiment 4: DistilBERT 66M -- Spam Detection")
+st.caption("Architecture: DistilBERT-base-uncased (66M parameters) -- 20 spam/ham email classification tasks")
+
+tab4a, tab4b, tab4c, tab4d = st.tabs(
+    ["Base DistilBERT", "Fine-Tuned DistilBERT (Spam)", "DistilBERT + RAG", "Fine-Tuned + RAG (Hybrid)"]
+)
+
+with tab4a:
+    st.subheader("Base DistilBERT -- No Fine-Tuning, No RAG")
+    st.markdown("""
+    ```
+    ┌──────────────────────────────────────────────────────────────┐
+    │              BASE DISTILBERT APPROACH                        │
+    ├──────────────────────────────────────────────────────────────┤
+    │                                                              │
+    │  Input: Email text                                           │
+    │         ↓                                                    │
+    │  ┌──────────────────────────────────────────────┐            │
+    │  │     distilbert-base-uncased (66M params)     │            │
+    │  │                                              │            │
+    │  │  • General English language model            │            │
+    │  │  • NOT trained on spam/phishing data         │            │
+    │  │  • Zero-shot cosine similarity to prototypes │            │
+    │  └──────────────────────────────────────────────┘            │
+    │         ↓                                                    │
+    │  Output: spam / ham + confidence                             │
+    │                                                              │
+    └──────────────────────────────────────────────────────────────┘
+    ```
+
+    **Key Characteristics:**
+    - **Generic model** -- no spam/phishing domain knowledge
+    - **Fast inference** -- single forward pass (~5ms)
+    - **Struggles with subtle phishing** -- may miss urgency cues
+    - **Baseline** -- this is what we compare against
+    """)
+
+with tab4b:
+    st.subheader("Fine-Tuned DistilBERT -- Trained on Spam/Phishing Data")
+    st.markdown("""
+    ```
+    ┌──────────────────────────────────────────────────────────────┐
+    │           FINE-TUNED DISTILBERT APPROACH                     │
+    ├──────────────────────────────────────────────────────────────┤
+    │                                                              │
+    │  Input: Email text                                           │
+    │         ↓                                                    │
+    │  ┌──────────────────────────────────────────────┐            │
+    │  │  Fine-tuned DistilBERT (66M params)          │            │
+    │  │  (Trained on phishing/spam dataset)           │            │
+    │  │                                              │            │
+    │  │  • Learned spam/phishing patterns            │            │
+    │  │  • Recognizes urgency, suspicious URLs       │            │
+    │  │  • Knows "verify your account" = phishing    │            │
+    │  └──────────────────────────────────────────────┘            │
+    │         ↓                                                    │
+    │  Output: spam / ham + confidence                             │
+    │                                                              │
+    └──────────────────────────────────────────────────────────────┘
+    ```
+
+    **Key Characteristics:**
+    - **Spam expertise baked in** -- all knowledge is in model weights
+    - **Fast inference** -- single forward pass (~5ms)
+    - **Handles phishing patterns** -- urgency, fake verification, prize scams
+    - **Same architecture** as Base DistilBERT, different weights
+
+    **Training Data:**
+    - 10,000 labeled emails (phishing + legitimate)
+    - Binary classification: spam (phishing) vs ham (legitimate)
+
+    **Source:**
+    - [enterprise-mailbox-assistant](https://github.com/intelliswarm-ai/enterprise-mailbox-assistant/tree/main/model-fine-tuned-llm)
+    """)
+
+with tab4c:
+    st.subheader("DistilBERT + RAG -- Retrieval-Augmented Voting")
+    st.markdown("""
+    ```
+    ┌──────────────────────────────────────────────────────────────┐
+    │               DISTILBERT + RAG APPROACH                      │
+    ├──────────────────────────────────────────────────────────────┤
+    │                                                              │
+    │  Input: Email text                                           │
+    │         ↓                                                    │
+    │  ┌─────────────────────┐                                     │
+    │  │   Embedding Model   │  (distilbert-base-uncased)          │
+    │  └─────────────────────┘                                     │
+    │         ↓                                                    │
+    │  ┌─────────────────────┐                                     │
+    │  │  Knowledge Base     │  15 labeled spam/ham examples       │
+    │  │  (Cosine similarity │  for retrieval)                     │
+    │  └─────────────────────┘                                     │
+    │         ↓ (Top-5 similar examples)                           │
+    │  ┌─────────────────────────────────────────┐                 │
+    │  │     Similarity-Weighted Vote            │                 │
+    │  │  Labels of retrieved similar emails     │                 │
+    │  └─────────────────────────────────────────┘                 │
+    │         ↓                                                    │
+    │  Output: spam / ham + confidence                             │
+    │                                                              │
+    └──────────────────────────────────────────────────────────────┘
+    ```
+
+    **Key Characteristics:**
+    - **No fine-tuning needed** -- uses base DistilBERT embeddings + retrieval
+    - **Dynamic knowledge** -- add new labeled examples anytime
+    - **Similarity voting** -- nearest neighbors decide the label
+    - **Slower** -- retrieval adds latency (~15ms)
+    """)
+
+with tab4d:
+    st.subheader("Fine-Tuned + RAG -- Hybrid Approach")
+    st.markdown("""
+    ```
+    ┌──────────────────────────────────────────────────────────────┐
+    │           FINE-TUNED + RAG (HYBRID) APPROACH                 │
+    ├──────────────────────────────────────────────────────────────┤
+    │                                                              │
+    │  Input: Email text                                           │
+    │         ↓                          ↓                         │
+    │  ┌──────────────────┐    ┌─────────────────────┐             │
+    │  │  Fine-Tuned      │    │   Embedding Model   │             │
+    │  │  DistilBERT      │    │  + Knowledge Base   │             │
+    │  │  (spam-trained   │    │  (retrieved labels) │             │
+    │  │   prediction)    │    │                     │             │
+    │  └──────────────────┘    └─────────────────────┘             │
+    │         ↓                          ↓                         │
+    │         └──────────┬───────────────┘                         │
+    │                    ↓                                         │
+    │  ┌──────────────────────────────────────────────┐            │
+    │  │          Weighted Combination                │            │
+    │  │  60% Fine-Tuned + 40% RAG neighbor vote     │            │
+    │  └──────────────────────────────────────────────┘            │
+    │         ↓                                                    │
+    │  Output: spam / ham + confidence                             │
+    │                                                              │
+    └──────────────────────────────────────────────────────────────┘
+    ```
+
+    **Key Characteristics:**
+    - **Best of both** -- spam expertise + retrieval evidence
+    - **Weighted decision** -- fine-tuned confidence + neighbor agreement
+    - **Medium latency** -- fine-tuned pass + retrieval (~20ms)
+    - **Robust** -- fallback when either approach is uncertain
+    """)
+
+st.divider()
+
+# ==========================================================================
 # Decision Matrix
 # ==========================================================================
 st.subheader("Decision Matrix: When to Use Each Approach")
@@ -391,9 +543,11 @@ with tech_col1:
     - `bert-base-uncased` -- Base BERT baseline (110M)
     - `truocpham/FinQA-7B-Instruct` -- Fine-tuned Llama2 for financial Q&A (7B)
     - `llama2` -- Base Llama2 via Ollama (7B)
+    - `distilbert-base-uncased` -- Base DistilBERT baseline (66M)
+    - Fine-tuned DistilBERT -- Spam/phishing detector (66M)
 
     **Frameworks:**
-    - PyTorch + Transformers (BERT models)
+    - PyTorch + Transformers (BERT/DistilBERT models)
     - Ollama (Llama2 inference)
     - ChromaDB + sentence-transformers (RAG)
     - Streamlit (UI)
@@ -405,6 +559,7 @@ with tech_col2:
     - FinQA: 8,281 Q&A pairs (IBM Research)
     - Financial PhraseBank: ~5,000 sentences
     - SEC 10-K Filings (sample documents for RAG)
+    - Phishing/Spam: 10,000 labeled emails (spam detection)
 
     **Infrastructure:**
     - Docker Compose (demo + Ollama containers)
@@ -414,4 +569,4 @@ with tech_col2:
     """)
 
 st.divider()
-st.caption("Architecture documentation for Fine-Tuning vs RAG demo")
+st.caption("Architecture documentation for Fine-Tuning vs RAG demo -- four experiments across three architectures")

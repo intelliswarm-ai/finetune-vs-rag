@@ -28,6 +28,7 @@ services:
       - FINETUNED_LLM_MODEL=finqa-7b
     volumes:
       - ./data:/app/data
+      - ./models:/app/models
       - shared_models:/shared_models
     depends_on:
       - ollama

@@ -1,5 +1,5 @@
 """
-Benchmark Runner -- Three controlled experiments on two architectures.
+Benchmark Runner -- Four controlled experiments on three architectures.
 
 Section 1: BERT 110M (Sentiment Classification)
   - Base BERT vs FinBERT (fine-tuned) vs BERT + RAG vs Hybrid (FinBERT + RAG)
@@ -9,6 +9,9 @@ Section 2: Llama2 7B (Numerical Reasoning)
 
 Section 3: Llama2 7B (Financial Ratios)
   - Base Llama2-7B vs FinQA-7B (fine-tuned) vs Llama2-7B + RAG vs FinQA-7B + RAG (hybrid)
+
+Section 4: DistilBERT 66M (Spam Detection)
+  - Base DistilBERT vs Fine-tuned DistilBERT vs DistilBERT + RAG vs Hybrid
 
 Usage:
     python app/benchmark.py
@@ -38,6 +41,11 @@ MARKET_PRICES = {
     "llama2_7b": {
         "input_per_1m": 0.20,
         "output_per_1m": 0.20,
+    },
+    # DistilBERT 66M - local inference, near-zero cost; cloud API estimate shown
+    "distilbert_66m": {
+        "input_per_1m": 0.01,   # HuggingFace Inference API estimate
+        "output_per_1m": 0.00,  # classification, no output tokens
     },
 }
 
@@ -388,6 +396,13 @@ def _save_financial_ratio_results(results, model_names):
                 "summary": summary,
                 "results": results,
             },
+            "distilbert_66m_spam": existing_sections.get("distilbert_66m_spam", {
+                "title": "DistilBERT 66M -- Spam Detection",
+                "architecture": "DistilBERT-base-uncased (66M parameters)",
+                "models": ["base", "finetuned", "rag", "hybrid"],
+                "model_labels": SPAM_LABELS,
+                "summary": {}, "results": [],
+            }),
         },
     }
 
@@ -474,11 +489,73 @@ def run_financial_ratio_benchmark():
 
 
 # -------------------------------------------------------------------------
+# Section 4: DistilBERT 66M Spam Detection
+# -------------------------------------------------------------------------
+SPAM_LABELS = {
+    "base": "Base DistilBERT (no FT, no RAG)",
+    "finetuned": "Fine-tuned DistilBERT (spam-trained)",
+    "rag": "DistilBERT + RAG (retrieval + voting)",
+    "hybrid": "Fine-tuned DistilBERT + RAG (hybrid)",
+}
+
+
+def run_distilbert_spam_benchmark():
+    """Base DistilBERT vs Fine-tuned vs DistilBERT+RAG vs Hybrid -- all 66M params."""
+    from demo_utils import (
+        run_base_distilbert_spam, run_finetuned_distilbert_spam,
+        run_rag_spam, run_hybrid_spam,
+        distilbert_base_available, spam_finetuned_available,
+    )
+
+    with open(TEST_CASES_PATH) as f:
+        cases = json.load(f)["spam_detection"]
+
+    model_names = ["base", "finetuned", "rag", "hybrid"]
+    print(f"  Running {len(cases)} spam detection cases x {len(model_names)} models (DistilBERT 66M)...")
+    results = []
+
+    for i, case in enumerate(cases):
+        text, expected = case["text"], case["label"]
+        row = {"id": case["id"], "text": text, "expected": expected,
+               "category": case["category"]}
+
+        for name, fn in [("base", run_base_distilbert_spam),
+                         ("finetuned", run_finetuned_distilbert_spam),
+                         ("rag", run_rag_spam),
+                         ("hybrid", run_hybrid_spam)]:
+            try:
+                r = fn(text)
+                row[f"{name}_label"] = r.label
+                row[f"{name}_confidence"] = r.confidence
+                row[f"{name}_latency_ms"] = r.latency_ms
+                row[f"{name}_correct"] = r.label == expected
+                row[f"{name}_input_tokens"] = r.input_tokens
+                row[f"{name}_completion_tokens"] = 0  # classification
+                row[f"{name}_total_tokens"] = r.input_tokens
+                row[f"{name}_cost_usd"] = estimate_cost(
+                    r.input_tokens, 0, "distilbert_66m")
+            except Exception:
+                row[f"{name}_label"] = "error"
+                row[f"{name}_correct"] = False
+
+        results.append(row)
+
+        marks = "  ".join(
+            f"{n}={row.get(f'{n}_label','?'):>4}[{'Y' if row.get(f'{n}_correct') else 'N'}]"
+            for n in model_names
+        )
+        print(f"    [{i+1:>2}/{len(cases)}] exp={expected:>4}  {marks}")
+
+    return results
+
+
+# -------------------------------------------------------------------------
 # Streaming (case-by-case) versions for live UI
 # -------------------------------------------------------------------------
 SENTIMENT_MODEL_NAMES = ["base", "finbert", "rag", "hybrid"]
 NUMERICAL_MODEL_NAMES = ["base", "finetuned", "rag", "hybrid"]
 FINANCIAL_RATIO_MODEL_NAMES = ["base", "finetuned", "rag", "hybrid"]
+SPAM_MODEL_NAMES = ["base", "finetuned", "rag", "hybrid"]
 
 
 def get_sentiment_cases():
@@ -495,6 +572,45 @@ def get_numerical_cases():
 def get_financial_ratio_cases():
     """Return the financial ratio test cases list."""
     return FINANCIAL_RATIO_CASES
+
+
+def get_spam_cases():
+    """Return the spam detection test cases list."""
+    with open(TEST_CASES_PATH) as f:
+        return json.load(f)["spam_detection"]
+
+
+def run_single_spam_case(case):
+    """Run all 4 models on a single spam detection case. Returns result dict."""
+    from demo_utils import (
+        run_base_distilbert_spam, run_finetuned_distilbert_spam,
+        run_rag_spam, run_hybrid_spam,
+    )
+
+    text, expected = case["text"], case["label"]
+    row = {"id": case["id"], "text": text, "expected": expected,
+           "category": case["category"]}
+
+    for name, fn in [("base", run_base_distilbert_spam),
+                     ("finetuned", run_finetuned_distilbert_spam),
+                     ("rag", run_rag_spam),
+                     ("hybrid", run_hybrid_spam)]:
+        try:
+            r = fn(text)
+            row[f"{name}_label"] = r.label
+            row[f"{name}_confidence"] = r.confidence
+            row[f"{name}_latency_ms"] = r.latency_ms
+            row[f"{name}_correct"] = r.label == expected
+            row[f"{name}_input_tokens"] = r.input_tokens
+            row[f"{name}_completion_tokens"] = 0
+            row[f"{name}_total_tokens"] = r.input_tokens
+            row[f"{name}_cost_usd"] = estimate_cost(
+                r.input_tokens, 0, "distilbert_66m")
+        except Exception:
+            row[f"{name}_label"] = "error"
+            row[f"{name}_correct"] = False
+
+    return row
 
 
 def run_single_sentiment_case(case):
@@ -664,10 +780,15 @@ def compute_section_summary(results, model_keys):
 
     summary = {m: _stats(m) for m in model_keys}
 
-    # F1 score for sentiment (where labels exist)
+    # F1 score for classification (where labels exist)
     if any(f"{model_keys[0]}_label" in r for r in results):
+        # Auto-detect label set from expected values
+        label_set = sorted(set(r.get("expected", "") for r in results
+                               if r.get("expected")))
+        if not label_set:
+            label_set = ["positive", "negative", "neutral"]
         for m in model_keys:
-            f1_data = _compute_f1(results, m)
+            f1_data = _compute_f1(results, m, label_set)
             if f1_data:
                 summary[m].update(f1_data)
 
@@ -692,9 +813,11 @@ def compute_section_summary(results, model_keys):
     return summary
 
 
-def _compute_f1(results, model_key):
-    """Compute precision, recall, F1 (macro) for a sentiment model."""
-    labels = ["positive", "negative", "neutral"]
+def _compute_f1(results, model_key, label_set=None):
+    """Compute precision, recall, F1 (macro) for a classification model."""
+    if label_set is None:
+        label_set = ["positive", "negative", "neutral"]
+    labels = label_set
     predictions = []
     expected = []
     for r in results:
@@ -749,9 +872,9 @@ def _compute_mape(results, model_key):
 
 
 def run_full_benchmark():
-    """Run all three benchmark sections and save."""
+    """Run all four benchmark sections and save."""
     print("=" * 70)
-    print("BENCHMARK: Three controlled experiments")
+    print("BENCHMARK: Four controlled experiments")
     print("=" * 70)
 
     # Section 1: BERT 110M
@@ -771,6 +894,12 @@ def run_full_benchmark():
     ratio_results = run_financial_ratio_benchmark()
     ratio_summary = compute_section_summary(
         ratio_results, ["base", "finetuned", "rag", "hybrid"])
+
+    # Section 4: DistilBERT 66M Spam Detection
+    print("\n--- Section 4: DistilBERT 66M (Spam Detection) ---")
+    spam_results = run_distilbert_spam_benchmark()
+    spam_summary = compute_section_summary(
+        spam_results, ["base", "finetuned", "rag", "hybrid"])
 
     output = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -813,6 +942,14 @@ def run_full_benchmark():
                 },
                 "summary": ratio_summary,
                 "results": ratio_results,
+            },
+            "distilbert_66m_spam": {
+                "title": "DistilBERT 66M -- Spam Detection",
+                "architecture": "DistilBERT-base-uncased (66M parameters)",
+                "models": ["base", "finetuned", "rag", "hybrid"],
+                "model_labels": SPAM_LABELS,
+                "summary": spam_summary,
+                "results": spam_results,
             },
         },
     }
@@ -876,6 +1013,25 @@ def backfill_token_metrics():
                 r[f"{m}_total_tokens"] = tok
                 r[f"{m}_cost_usd"] = estimate_cost(tok, 0, "bert_110m")
 
+    # --- Backfill spam detection ---
+    spam = sections.get("distilbert_66m_spam", {})
+    spam_models = spam.get("models", [])
+    for r in spam.get("results", []):
+        text = r.get("text", "")
+        base_tokens = estimate_tokens_from_text(text)
+        for m in spam_models:
+            if f"{m}_input_tokens" not in r and r.get(f"{m}_label") != "error":
+                if m == "rag":
+                    tok = base_tokens + base_tokens * 5
+                elif m == "hybrid":
+                    tok = base_tokens + base_tokens + base_tokens * 5
+                else:
+                    tok = base_tokens
+                r[f"{m}_input_tokens"] = tok
+                r[f"{m}_completion_tokens"] = 0
+                r[f"{m}_total_tokens"] = tok
+                r[f"{m}_cost_usd"] = estimate_cost(tok, 0, "distilbert_66m")
+
     # --- Backfill numerical + financial ratios ---
     for sec_key in ["llama2_7b_numerical", "llama2_7b_financial_ratios"]:
         sec = sections.get(sec_key, {})
@@ -919,6 +1075,8 @@ def backfill_token_metrics():
     # Recompute summaries with new data
     if sent.get("results"):
         sent["summary"] = compute_section_summary(sent["results"], sent_models)
+    if spam.get("results"):
+        spam["summary"] = compute_section_summary(spam["results"], spam_models)
     for sec_key in ["llama2_7b_numerical", "llama2_7b_financial_ratios"]:
         sec = sections.get(sec_key, {})
         if sec.get("results"):
