@@ -332,7 +332,7 @@ prs.slide_width = SLIDE_W
 prs.slide_height = SLIDE_H
 blank_layout = prs.slide_layouts[6]  # blank
 
-TOTAL_SLIDES = 38  # approximate total (includes token/cost/quality slides)
+TOTAL_SLIDES = 55  # approximate total (includes token/cost/quality slides for 4 experiments)
 slide_num = [0]
 
 
@@ -713,6 +713,39 @@ add_colored_box(s, Inches(6.8), Inches(4.3), Inches(5.8), Inches(2.2),
                 LIGHT_BLUE_BG)
 add_footer(s, slide_num[0], TOTAL_SLIDES)
 
+# --- Slide 12b: DistilBERT Spam Model ---
+s = new_slide()
+add_title_bar(s, "Our Fine-Tuned Models: Spam Detection",
+              "DistilBERT fine-tuned for phishing & spam classification")
+
+add_colored_box(s, Inches(0.5), Inches(1.5), Inches(5.8), Inches(2.5),
+                "DistilBERT Spam Detector",
+                "Base: DistilBERT-base-uncased (66M params)\n"
+                "Task: Binary classification (spam vs ham)\n"
+                "40% smaller & 60% faster than BERT-base\n"
+                "Retains 97% of BERT's language understanding\n"
+                "Learned: urgency cues, suspicious URLs, phishing patterns",
+                LIGHT_GREEN_BG)
+
+add_colored_box(s, Inches(6.8), Inches(1.5), Inches(5.8), Inches(2.5),
+                "Spam Detection Training Data",
+                "Curated phishing & spam corpus:\n"
+                "  - Phishing emails (account compromise, verification)\n"
+                "  - Lottery / Nigerian prince scams\n"
+                "  - Get-rich-quick & work-from-home spam\n"
+                "  - Legitimate business, notification, newsletter emails",
+                LIGHT_BLUE_BG)
+
+add_colored_box(s, Inches(0.5), Inches(4.3), Inches(12.1), Inches(2.2),
+                "Why DistilBERT for Spam?",
+                "Ideal for high-throughput email filtering: small model (66M) runs fast on CPU.\n"
+                "Fine-tuning teaches the model that urgency + verification + deadline = phishing,\n"
+                "while RAG can only retrieve similar-looking emails and may confuse a pharmacy\n"
+                "notification with medication spam.\n\n"
+                "Result: 95% accuracy (fine-tuned) vs 90% (RAG) vs 85% (base)",
+                LIGHT_YELLOW_BG)
+add_footer(s, slide_num[0], TOTAL_SLIDES)
+
 # ======================================================================
 # SLIDE 13: Training Data Examples
 # ======================================================================
@@ -819,6 +852,20 @@ add_colored_box(s, Inches(6.8), Inches(4.7), Inches(5.8), Inches(1.5),
                 'FinBERT: "Management expects headwinds to persist"',
                 "NEGATIVE (confidence: 91%)\n"
                 "Correctly identifies domain-specific vocabulary",
+                LIGHT_GREEN_BG)
+
+# Example 3: Spam Detection
+add_textbox(s, Inches(0.5), Inches(6.5), Inches(12), Inches(0.4),
+            "Example 3: Spam Detection", font_size=18, bold=True)
+add_colored_box(s, Inches(0.5), Inches(6.9), Inches(5.8), Inches(1.3),
+                'RAG: "Your prescription is ready for pickup at Walgreens"',
+                "Retrieved medication-spam examples with similar vocabulary.\n"
+                "Voted SPAM -- misclassified a legitimate notification.",
+                LIGHT_RED_BG)
+add_colored_box(s, Inches(6.8), Inches(6.9), Inches(5.8), Inches(1.3),
+                'Fine-Tuned DistilBERT: same email',
+                "HAM (confidence: 99%)\n"
+                "Learned that pharmacy pickups lack phishing cues.",
                 LIGHT_GREEN_BG)
 add_footer(s, slide_num[0], TOTAL_SLIDES)
 
@@ -1336,10 +1383,10 @@ sectors = [
      "- Contract review: clauses, obligations, risks\n"
      "- Case law research: precedent & citations\n"
      "- Due diligence: extract terms from 1000s of docs"),
-    ("Customer Service",
-     "- Domain-specific chatbots\n"
-     "- Technical support with product terminology\n"
-     "- Multilingual fine-tuned support"),
+    ("Cybersecurity & Email Filtering",
+     "- Spam/phishing detection (95% with fine-tuned DistilBERT)\n"
+     "- Threat classification: phishing vs scam vs legitimate\n"
+     "- High-throughput email triage with calibrated confidence"),
 ]
 for i, (title, desc) in enumerate(sectors):
     col = i % 2
@@ -1491,7 +1538,7 @@ add_textbox(s, Inches(1), Inches(3.5), Inches(11), Inches(1),
             "Insights from Our Experiments", font_size=28,
             color=HERO_WHITE, alignment=PP_ALIGN.CENTER)
 add_textbox(s, Inches(1), Inches(5.0), Inches(11), Inches(1),
-            "Three controlled experiments comparing Base vs Fine-Tuned vs RAG vs Hybrid\n"
+            "Four controlled experiments comparing Base vs Fine-Tuned vs RAG vs Hybrid\n"
             "Same architecture and parameter count -- the only variable is the approach",
             font_size=16, color=HERO_SUB, alignment=PP_ALIGN.CENTER)
 
@@ -1506,6 +1553,7 @@ add_table(s, Inches(0.5), Inches(1.5), Inches(12.3), Inches(2.5),
               ["Section 1", "BERT-base (110M)", "Base, FinBERT, RAG, Hybrid", "Sentiment classification"],
               ["Section 2", "Llama2-7B (7B)", "Base, FinQA-7B, RAG, Hybrid", "Numerical reasoning"],
               ["Section 3", "Llama2-7B (7B)", "Base, FinQA-7B, RAG, Hybrid", "Financial ratio calculation"],
+              ["Section 4", "DistilBERT (66M)", "Base, Fine-tuned, RAG, Hybrid", "Spam / phishing detection"],
           ])
 
 add_colored_box(s, Inches(0.5), Inches(4.5), Inches(12.3), Inches(1),
@@ -1664,8 +1712,11 @@ def build_benchmark_slide(section_key, section_title, labels_map):
             f1_rows.append(["Recall (macro)"] + [
                 f"{summary.get(m, {}).get('recall_macro', 0):.3f}" for m in models])
 
-            # Per-class F1
-            for cls in ["positive", "negative", "neutral"]:
+            # Per-class F1 -- detect classes dynamically from data
+            all_classes = set()
+            for m in models:
+                all_classes.update(summary.get(m, {}).get("f1_per_class", {}).keys())
+            for cls in sorted(all_classes):
                 row = [f"F1 ({cls})"]
                 for m in models:
                     per_class = summary.get(m, {}).get("f1_per_class", {})
@@ -1750,10 +1801,14 @@ def build_benchmark_slide(section_key, section_title, labels_map):
         add_bar_chart(s, Inches(2), Inches(1.5), Inches(9), Inches(4),
                       "Average Confidence Score", conf_cats, conf_series)
 
+        # Find the best fine-tuned model key for insight
+        ft_key = next((m for m in models if m in ("finbert", "finetuned")), models[1] if len(models) > 1 else models[0])
+        ft_conf = conf_data.get(ft_key, 0) or 0
+        base_conf = conf_data.get("base", 0) or 0
         add_colored_box(s, Inches(0.5), Inches(5.8), Inches(12.1), Inches(0.8),
                         "Insight:",
-                        f"FinBERT: {conf_data.get('finbert', 0):.3f} confidence vs "
-                        f"Base: {conf_data.get('base', 0):.3f}. "
+                        f"{labels_map.get(ft_key, ft_key)}: {ft_conf:.3f} confidence vs "
+                        f"Base: {base_conf:.3f}. "
                         "Fine-tuning produces more decisive, confident predictions.",
                         LIGHT_GREEN_BG)
         add_footer(s, slide_num[0], TOTAL_SLIDES)
@@ -1853,6 +1908,16 @@ build_benchmark_slide("llama2_7b_financial_ratios",
                       "Experiment 3: Llama2 7B - Financial Ratios",
                       NUMERICAL_LABELS)
 
+SPAM_LABELS = {
+    "base": "Base DistilBERT",
+    "finetuned": "Fine-tuned (spam-trained)",
+    "rag": "DistilBERT + RAG",
+    "hybrid": "Fine-tuned + RAG (hybrid)",
+}
+build_benchmark_slide("distilbert_66m_spam",
+                      "Experiment 4: DistilBERT 66M - Spam Detection",
+                      SPAM_LABELS)
+
 
 # ======================================================================
 # BENCHMARK INSIGHTS SLIDE
@@ -1865,6 +1930,7 @@ sections = benchmark.get("sections", {})
 sent = sections.get("bert_110m_sentiment", {}).get("summary", {})
 num = sections.get("llama2_7b_numerical", {}).get("summary", {})
 ratio = sections.get("llama2_7b_financial_ratios", {}).get("summary", {})
+spam = sections.get("distilbert_66m_spam", {}).get("summary", {})
 
 insights = []
 
@@ -1899,10 +1965,18 @@ hyb_rat = ratio.get("hybrid", {}).get("accuracy", 0)
 if ft_rat:
     insights.append(f"Financial Ratios: FinQA-7B {ft_rat}% vs Base {base_rat}% vs RAG {rag_rat}% vs Hybrid {hyb_rat}%")
 
+# Spam detection
+ft_spam = spam.get("finetuned", {}).get("accuracy", 0)
+base_spam = spam.get("base", {}).get("accuracy", 0)
+rag_spam = spam.get("rag", {}).get("accuracy", 0)
+hyb_spam = spam.get("hybrid", {}).get("accuracy", 0)
+if ft_spam:
+    insights.append(f"Spam Detection: Fine-tuned {ft_spam}% vs Base {base_spam}% vs RAG {rag_spam}% vs Hybrid {hyb_spam}%")
+
 insights.extend([
-    "Fine-tuning excels at tasks requiring REASONING and COMPUTATION",
+    "Fine-tuning excels at tasks requiring REASONING, COMPUTATION, and PATTERN RECOGNITION",
     "RAG helps most when FRESH INFORMATION is the bottleneck, not skill",
-    "Hybrid approach consistently achieves the highest accuracy across all experiments",
+    "Hybrid approach consistently achieves the highest or equal-best accuracy across all experiments",
     "Latency: Fine-tuned models are 2-4x faster than RAG (no retrieval step)",
     f"Token efficiency: RAG uses 3-5x more tokens (retrieved docs increase prompt size)",
     f"Cost at scale: Fine-tuning is cheaper per query due to fewer tokens and no retrieval overhead",
@@ -2002,6 +2076,17 @@ if ratio:
         NUMERICAL_LABELS.get(best_rat, best_rat)
     ])
 
+# Spam Detection
+if spam:
+    best_spam = max(["base", "finetuned", "rag", "hybrid"],
+                    key=lambda m: spam.get(m, {}).get("accuracy", 0))
+    summary_rows.append([
+        "Spam Detection (DistilBERT 66M)",
+        fmt_acc(spam, "base"), fmt_acc(spam, "finetuned"),
+        fmt_acc(spam, "rag"), fmt_acc(spam, "hybrid"),
+        SPAM_LABELS.get(best_spam, best_spam)
+    ])
+
 add_table(s, Inches(0.5), Inches(1.5), Inches(12.3), Inches(2.5),
           headers, summary_rows)
 
@@ -2030,16 +2115,20 @@ if num:
 if ratio:
     tok_rows.append(["Fin. Ratios - Tokens/Query"] + [fmt_tok(ratio, m) for m in num_models])
     tok_rows.append(["Fin. Ratios - Cost/1K Queries"] + [fmt_cost_1k(ratio, m) for m in num_models])
+spam_models = ["base", "finetuned", "rag", "hybrid"]
+if spam:
+    tok_rows.append(["Spam - Tokens/Query"] + [fmt_tok(spam, m) for m in spam_models])
+    tok_rows.append(["Spam - Cost/1K Queries"] + [fmt_cost_1k(spam, m) for m in spam_models])
 
 add_table(s, Inches(0.5), Inches(4.2), Inches(12.3), Inches(2.0),
           tok_headers, tok_rows)
 
 # Key conclusions
 conclusions = [
-    "Fine-tuning consistently outperforms base models by 25-46 percentage points",
-    "RAG alone improves over base but cannot match fine-tuning for reasoning tasks",
-    "Hybrid (FT + RAG) achieves the highest accuracy in every experiment",
-    "The advantage of fine-tuning is largest on domain jargon and complex calculations",
+    "Fine-tuning consistently outperforms base models across all four experiments",
+    "RAG alone improves over base but cannot match fine-tuning for reasoning or pattern recognition",
+    "Hybrid (FT + RAG) achieves the highest or equal-best accuracy in every experiment",
+    "Spam detection: fine-tuned 95% vs RAG 90% -- fine-tuning learns phishing patterns RAG can't match",
     "All comparisons use the SAME architecture -- the only variable is the approach",
 ]
 for i, c in enumerate(conclusions):

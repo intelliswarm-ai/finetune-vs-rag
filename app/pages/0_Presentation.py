@@ -199,8 +199,9 @@ def slide_agenda():
         ### Part 4: Live Demo
         11. Sentiment analysis comparison
         12. Financial reasoning comparison
-        13. Benchmark results
-        14. Key takeaways & Q&A
+        13. Spam detection comparison
+        14. Benchmark results
+        15. Key takeaways & Q&A
         """)
 
 
@@ -653,6 +654,43 @@ def slide_models_used():
         </div>
         """, unsafe_allow_html=True)
 
+    st.markdown("---")
+
+    col3, col4 = st.columns(2)
+    with col3:
+        st.markdown("""
+        <div class="green-box">
+        <strong>DistilBERT Spam Detector -- Spam / Phishing Classification</strong><br/><br/>
+        <strong>Base model:</strong> DistilBERT-base-uncased (66M parameters)<br/>
+        <strong>Fine-tuned on:</strong> Phishing &amp; spam email datasets<br/><br/>
+        <strong>What was changed:</strong> A binary classification head was added
+        and the model was fine-tuned to distinguish spam/phishing emails from
+        legitimate (ham) messages. The model learned urgency language, suspicious
+        URLs, verification requests, and prize-claim patterns.<br/><br/>
+        <strong>Why DistilBERT:</strong> 40% smaller and 60% faster than BERT-base
+        while retaining 97% of BERT's language understanding -- ideal for
+        high-throughput email filtering.
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col4:
+        st.markdown("""
+        <div class="blue-box">
+        <strong>Training Data for Spam Detector</strong><br/><br/>
+        <strong>Dataset:</strong> Curated phishing &amp; spam corpus<br/>
+        - Phishing emails with urgency language and fake verification links<br/>
+        - Nigerian prince / lottery scam messages<br/>
+        - Get-rich-quick and work-from-home spam<br/>
+        - Legitimate business, notification, and newsletter emails<br/><br/>
+        <strong>Categories covered:</strong><br/>
+        - Phishing (account compromise, verification)<br/>
+        - Obvious spam (lottery, prizes, money offers)<br/>
+        - Scams (advance-fee fraud)<br/>
+        - Ham (business, notifications, newsletters)<br/><br/>
+        <strong>Binary classification:</strong> spam vs ham
+        </div>
+        """, unsafe_allow_html=True)
+
 
 def slide_training_data_detail():
     """Training data examples and what the models learned"""
@@ -721,6 +759,38 @@ the final number.""", language=None)
     <strong>Key insight:</strong> The training data teaches the model that "headwinds"
     is negative and "maintained" is neutral -- vocabulary meanings that are specific
     to finance. A generic model without this training would not know these distinctions.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### Spam Detection Training Examples")
+    st.markdown("The fine-tuned DistilBERT learns to recognise phishing patterns that surface-level similarity misses:")
+
+    spam_examples = {
+        "Email Text": [
+            "URGENT: Your account has been compromised. Click to verify.",
+            "Q4 Board Meeting Agenda -- Hi team, attached is the agenda...",
+            "Your prescription is ready for pickup at Walgreens on Main St.",
+            "Make $5000 per day from home! No experience needed.",
+            "Verify your PayPal account within 24 hours to avoid suspension.",
+        ],
+        "Label": ["SPAM", "HAM", "HAM", "SPAM", "SPAM"],
+        "Why (what the model learned)": [
+            "Urgency + 'compromised' + 'verify' = classic phishing pattern",
+            "Business context, named event, team address = legitimate",
+            "Pharmacy notification -- no urgency, no action demanded",
+            "Exaggerated money claims + 'no experience' = get-rich-quick scam",
+            "Brand impersonation + deadline threat + 'verify' = phishing",
+        ],
+    }
+    st.table(pd.DataFrame(spam_examples))
+
+    st.markdown("""
+    <div class="orange-box">
+    <strong>Key insight:</strong> RAG retrieves similar-looking emails but can confuse
+    a legitimate pharmacy notification with medication spam, or a real shipping notice
+    with a phishing link.  Fine-tuning embeds the <em>patterns</em> (urgency + verification
+    + deadline = phishing) directly into the model weights.
     </div>
     """, unsafe_allow_html=True)
 
@@ -843,6 +913,29 @@ def slide_rag_falls_short():
         negative financial language.
         """)
         st.success("Understands domain-specific vocabulary")
+
+    st.markdown("---")
+
+    st.markdown("### Example 3: Spam / Phishing Detection")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+        **Email:** *"Your prescription is ready for pickup at Walgreens on Main St."*
+
+        **RAG:** Retrieved medication-spam examples with similar vocabulary
+        (pills, pharmacy, prescription) and voted **SPAM**.
+        """)
+        st.error("Misclassified -- legitimate notification confused with med-spam")
+    with col2:
+        st.markdown("""
+        **Fine-Tuned DistilBERT:**
+        **HAM** (confidence: 99%)
+
+        The model learned that pharmacy pickup notifications lack
+        urgency cues, suspicious links, and verification requests
+        that define real spam.
+        """)
+        st.success("Correctly identified as legitimate")
 
 
 def slide_decision_framework():
@@ -1538,10 +1631,10 @@ def slide_use_cases():
         - **Case Law Research:** Understand legal precedent and citations
         - **Due Diligence:** Extract key terms from thousands of documents
 
-        ### Customer Service
-        - **Domain-Specific Chatbots:** Trained on your product knowledge
-        - **Technical Support:** Understands product-specific terminology
-        - **Multilingual Support:** Fine-tuned for specific language pairs
+        ### Cybersecurity & Email Filtering
+        - **Spam/Phishing Detection:** Fine-tuned DistilBERT catches urgency + verification patterns
+        - **Threat Classification:** Learned phishing vs scam vs legitimate at 95% accuracy
+        - **Email Triage:** High-throughput classification with calibrated confidence scores
         """)
 
     st.info("""
@@ -1596,6 +1689,7 @@ def slide_hybrid():
     **Result:** The hybrid approach achieves **65.8% accuracy** on FinQA, compared to
     61.2% for fine-tuning alone and 15.3% for RAG alone.
     **Sentiment:** 75% hybrid vs 70% FT-only vs 65% RAG-only.
+    **Spam Detection:** 95% hybrid = 95% FT-only > 90% RAG-only (with higher confidence).
     """)
 
 
@@ -1657,11 +1751,11 @@ def slide_key_takeaways():
 
     takeaways = [
         ("Fine-tuning is essential for specialized reasoning",
-         "When your task requires domain-specific calculations, consistent output formats, or learned reasoning patterns, fine-tuning delivers 61%+ accuracy vs 15% for RAG on tasks like FinQA."),
+         "When your task requires domain-specific calculations, consistent output formats, or learned reasoning patterns, fine-tuning delivers 61%+ accuracy vs 15% for RAG on FinQA, and 95% vs 90% on spam detection."),
         ("RAG is valuable for dynamic knowledge",
          "When your data changes frequently, you need source citations for audit/compliance, or you need to deploy quickly without training data — RAG is the right first choice."),
         ("Best production systems combine both (hybrid)",
-         "The hybrid approach achieves 65.8% on FinQA vs 61.2% FT-only vs 15.3% RAG-only. Fine-tuning provides the reasoning skills; RAG provides fresh, citable context."),
+         "The hybrid approach achieves 65.8% on FinQA vs 61.2% FT-only vs 15.3% RAG-only, and matches fine-tuning's 95% on spam detection. Fine-tuning provides the reasoning skills; RAG provides fresh, citable context."),
         ("Modern tools make fine-tuning accessible",
          "Unsloth + QLoRA lets you fine-tune a 7B model on a consumer GPU (8 GB VRAM) in under 4 hours. You no longer need a data center or an ML PhD to get started."),
         ("Start with RAG, add fine-tuning where gaps appear",
@@ -1687,7 +1781,7 @@ def slide_demo_intro():
     ### What we'll demonstrate:
     """)
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("""
@@ -1709,11 +1803,23 @@ def slide_demo_intro():
         </div>
         """, unsafe_allow_html=True)
 
+    col3, col4 = st.columns(2)
+
     with col3:
         st.markdown("""
         <div class="tool-card">
-        <h3>Demo 3: Benchmarks at Scale</h3>
-        <p>Pre-computed results across <strong>8,281 test cases</strong>.</p>
+        <h3>Demo 3: Spam Detection</h3>
+        <p>Compare <strong>Fine-Tuned DistilBERT</strong> vs <strong>RAG-based</strong> spam classification.</p>
+        <p>See how fine-tuning recognises phishing patterns that RAG misses.</p>
+        <p><em>Navigate to: Spam Detection page</em></p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col4:
+        st.markdown("""
+        <div class="tool-card">
+        <h3>Demo 4: Benchmarks at Scale</h3>
+        <p>Pre-computed results across <strong>all 4 experiments</strong>.</p>
         <p>See the aggregate numbers that prove fine-tuning's advantage.</p>
         <p><em>Navigate to: Benchmark Results page</em></p>
         </div>
@@ -1878,6 +1984,7 @@ def slide_benchmark_overview():
         {"Experiment": "Section 1", "Architecture": "BERT-base (110M)", "Approaches": "Base, FinBERT, RAG, Hybrid", "Task": "Sentiment classification"},
         {"Experiment": "Section 2", "Architecture": "Llama2-7B (7B)", "Approaches": "Base, FinQA-7B, RAG, Hybrid", "Task": "Numerical reasoning"},
         {"Experiment": "Section 3", "Architecture": "Llama2-7B (7B)", "Approaches": "Base, FinQA-7B, RAG, Hybrid", "Task": "Financial ratio calculation"},
+        {"Experiment": "Section 4", "Architecture": "DistilBERT (66M)", "Approaches": "Base, Fine-tuned, RAG, Hybrid", "Task": "Spam / phishing detection"},
     ]))
 
     st.markdown("""
@@ -1919,6 +2026,16 @@ def slide_benchmark_ratios():
     )
 
 
+def slide_benchmark_spam():
+    """Benchmark: DistilBERT 66M Spam Detection"""
+    _render_benchmark_section(
+        "distilbert_66m_spam",
+        "Benchmark: DistilBERT 66M -- Spam Detection",
+        {"base": "Base DistilBERT", "finetuned": "Fine-tuned (spam-trained)",
+         "rag": "DistilBERT + RAG", "hybrid": "Fine-tuned + RAG"},
+    )
+
+
 def slide_benchmark_summary():
     """Benchmark: All Experiments at a Glance"""
     import plotly.graph_objects as go
@@ -1936,6 +2053,8 @@ def slide_benchmark_summary():
          {"base": "Base", "finetuned": "FinQA-7B", "rag": "RAG", "hybrid": "Hybrid"}),
         ("llama2_7b_financial_ratios", "Fin. Ratios (Llama2 7B)",
          {"base": "Base", "finetuned": "FinQA-7B", "rag": "RAG", "hybrid": "Hybrid"}),
+        ("distilbert_66m_spam", "Spam (DistilBERT 66M)",
+         {"base": "Base", "finetuned": "Fine-tuned", "rag": "RAG", "hybrid": "Hybrid"}),
     ]
 
     # Grouped bar chart: accuracy across all experiments
@@ -1973,7 +2092,8 @@ def slide_benchmark_summary():
 
     st.markdown("""
     <div class="green-box">
-    <strong>Key Insight:</strong> Fine-tuning consistently outperforms base models across all experiments.
+    <strong>Key Insight:</strong> Fine-tuning consistently outperforms base models across all four experiments
+    -- from sentiment classification and numerical reasoning to spam detection.
     The hybrid approach (fine-tuning + RAG) provides the best or near-best results in every category.
     </div>
     """, unsafe_allow_html=True)
@@ -2014,6 +2134,7 @@ SLIDES = [
     ("Benchmark: Sentiment", slide_benchmark_sentiment),
     ("Benchmark: Numerical", slide_benchmark_numerical),
     ("Benchmark: Financial Ratios", slide_benchmark_ratios),
+    ("Benchmark: Spam Detection", slide_benchmark_spam),
     ("Benchmark: Summary", slide_benchmark_summary),
     ("Live Demo", slide_demo_intro),
 ]
