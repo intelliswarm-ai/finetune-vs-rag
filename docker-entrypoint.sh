@@ -123,6 +123,36 @@ engine.initialize()
 print(f'RAG ready: {engine.num_chunks} chunks indexed')
 " || echo "RAG init will happen on first query"
 
+# -----------------------------------------------------------
+# 5. Pre-compute benchmark results so pages load instantly
+# -----------------------------------------------------------
+
+# Standard benchmark (50 test cases across 4 experiments)
+if [ ! -f "data/benchmark_results.json" ]; then
+    echo "Pre-computing standard benchmark results (50 test cases)..."
+    python3 app/benchmark.py \
+        && echo "Standard benchmark results saved to data/benchmark_results.json" \
+        || echo "Standard benchmark pre-computation failed (will run on demand)"
+else
+    echo "Standard benchmark results already pre-computed."
+fi
+
+# Adversarial stress test (120 adversarial cases across 4 experiments)
+JUDGE_FLAG=""
+if [ -n "${OPENAI_API_KEY}" ]; then
+    JUDGE_FLAG="--with-judge"
+    echo "OPENAI_API_KEY detected -- will run adversarial benchmark with LLM-as-Judge (${JUDGE_MODEL:-gpt-4o})"
+fi
+
+if [ ! -f "data/adversarial_results.json" ]; then
+    echo "Pre-computing adversarial stress test results (120 test cases)..."
+    python3 app/adversarial_benchmark.py ${JUDGE_FLAG} \
+        && echo "Adversarial results saved to data/adversarial_results.json" \
+        || echo "Adversarial benchmark pre-computation failed (will run on demand)"
+else
+    echo "Adversarial stress test results already pre-computed."
+fi
+
 echo ""
 echo "Starting Streamlit on port 8501..."
 exec streamlit run app/Finetune_vs_RAG.py
