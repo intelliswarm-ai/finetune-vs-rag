@@ -1844,6 +1844,15 @@ if _RESULTS_PATH.exists():
     except (json.JSONDecodeError, OSError):
         pass
 
+_MODEL_FAMILY_PATH = _Path(__file__).parent.parent.parent / "data" / "model_family_results.json"
+_model_family_data = {}
+if _MODEL_FAMILY_PATH.exists():
+    try:
+        with open(_MODEL_FAMILY_PATH) as _f:
+            _model_family_data = json.load(_f)
+    except (json.JSONDecodeError, OSError):
+        pass
+
 _COLORS_MAP = {
     "base": "#E84D4D", "finbert": "#2EA04E", "finetuned": "#2EA04E",
     "rag": "#428BCA", "hybrid": "#F09319",
@@ -1985,6 +1994,7 @@ def slide_benchmark_overview():
         {"Experiment": "Section 2", "Architecture": "Llama2-7B (7B)", "Approaches": "Base, FinQA-7B, RAG, Hybrid", "Task": "Numerical reasoning"},
         {"Experiment": "Section 3", "Architecture": "Llama2-7B (7B)", "Approaches": "Base, FinQA-7B, RAG, Hybrid", "Task": "Financial ratio calculation"},
         {"Experiment": "Section 4", "Architecture": "DistilBERT (66M)", "Approaches": "Base, Fine-tuned, RAG, Hybrid", "Task": "Spam / phishing detection"},
+        {"Experiment": "Section 5", "Architecture": "DistilBERT (66M) vs GPT-4o-mini (~8B)", "Approaches": "Two fine-tuned models compared", "Task": "Model size impact on spam detection"},
     ]))
 
     st.markdown("""
@@ -2099,6 +2109,234 @@ def slide_benchmark_summary():
     """, unsafe_allow_html=True)
 
 
+def slide_benchmark_model_family():
+    """Benchmark: Does Model Size Matter for Fine-Tuning?"""
+    import plotly.graph_objects as go
+    import pandas as pd
+
+    st.markdown('<p class="slide-title">Does Model Size Matter for Fine-Tuning?</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">Fine-tuned DistilBERT (66M) vs Fine-tuned GPT-4o-mini (~8B) on spam detection</p>', unsafe_allow_html=True)
+
+    sections = _model_family_data.get("sections", {})
+    if not sections:
+        st.warning("No model family benchmark data available. Run `python app/model_family_benchmark.py` first.")
+        return
+
+    ts = _model_family_data.get("timestamp", "not yet run")
+    st.caption(f"Results from: {ts}")
+
+    models = ["distilbert_ft", "gpt4omini_ft"]
+    labels = {
+        "distilbert_ft": "Fine-tuned DistilBERT (66M)",
+        "gpt4omini_ft": "Fine-tuned GPT-4o-mini (~8B)",
+    }
+    colors = {"distilbert_ft": "#ff6b35", "gpt4omini_ft": "#4a90d9"}
+
+    # Model comparison cards
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+        <div style="border: 2px solid #ff6b35; border-radius: 10px; padding: 12px; text-align: center;">
+        <h4 style="color: #ff6b35; margin: 0;">DistilBERT</h4>
+        <p style="font-size: 1.8em; font-weight: bold; margin: 0.3em 0;">66M params</p>
+        <p style="margin: 0;">Local inference | Near-zero cost</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div style="border: 2px solid #4a90d9; border-radius: 10px; padding: 12px; text-align: center;">
+        <h4 style="color: #4a90d9; margin: 0;">GPT-4o-mini</h4>
+        <p style="font-size: 1.8em; font-weight: bold; margin: 0.3em 0;">~8B params</p>
+        <p style="margin: 0;">OpenAI API | $0.30/$1.20 per 1M tokens</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("")
+
+    # Accuracy comparison: Basic vs Adversarial
+    basic = sections.get("basic_spam", {})
+    adv = sections.get("adversarial_spam", {})
+    basic_summary = basic.get("summary", {})
+    adv_summary = adv.get("summary", {})
+
+    # Metric cards for both sections
+    if basic_summary:
+        st.markdown("##### Basic Spam Detection (20 cases)")
+        cols = st.columns(len(models))
+        for col, m in zip(cols, models):
+            s = basic_summary.get(m, {})
+            with col:
+                st.metric(labels[m], f"{s.get('accuracy', 0)}%",
+                          delta=f"{s.get('correct', 0)}/{s.get('total', 0)}")
+
+    if adv_summary:
+        st.markdown("##### Adversarial Spam Detection (30 cases)")
+        cols = st.columns(len(models))
+        for col, m in zip(cols, models):
+            s = adv_summary.get(m, {})
+            with col:
+                st.metric(labels[m], f"{s.get('accuracy', 0)}%",
+                          delta=f"{s.get('correct', 0)}/{s.get('total', 0)}")
+
+    # Combined accuracy chart
+    fig = go.Figure()
+    for m in models:
+        accs = []
+        x_labels = []
+        for sec_key, sec_label in [("basic_spam", "Basic"), ("adversarial_spam", "Adversarial")]:
+            sec = sections.get(sec_key, {})
+            summary = sec.get("summary", {})
+            if summary:
+                accs.append(summary.get(m, {}).get("accuracy", 0))
+                x_labels.append(sec_label)
+        if accs:
+            fig.add_trace(go.Bar(
+                name=labels[m], x=x_labels, y=accs,
+                marker_color=colors.get(m, "#999"),
+                text=[f"{a}%" for a in accs], textposition="auto",
+            ))
+    fig.update_layout(
+        title="Accuracy: Basic vs Adversarial",
+        barmode="group", yaxis_range=[0, 105],
+        height=400, margin=dict(t=50, b=30),
+    )
+    st.plotly_chart(fig, use_container_width=True, key="pres_mf_acc")
+
+    # Latency and cost comparison
+    chart_col1, chart_col2 = st.columns(2)
+    with chart_col1:
+        fig_lat = go.Figure()
+        for m in models:
+            lats = []
+            x_labels = []
+            for sec_key, sec_label in [("basic_spam", "Basic"), ("adversarial_spam", "Adversarial")]:
+                sec = sections.get(sec_key, {})
+                summary = sec.get("summary", {})
+                if summary:
+                    lat = summary.get(m, {}).get("avg_latency_ms", 0)
+                    lats.append(lat)
+                    x_labels.append(sec_label)
+            if lats:
+                fig_lat.add_trace(go.Bar(
+                    name=labels[m].split("(")[0].strip(), x=x_labels, y=lats,
+                    marker_color=colors.get(m, "#999"),
+                    text=[f"{l:.0f}ms" for l in lats], textposition="auto",
+                ))
+        fig_lat.update_layout(title="Average Latency", barmode="group",
+                              height=350, margin=dict(t=40, b=30))
+        st.plotly_chart(fig_lat, use_container_width=True, key="pres_mf_lat")
+
+    with chart_col2:
+        fig_cost = go.Figure()
+        for m in models:
+            costs = []
+            x_labels = []
+            for sec_key, sec_label in [("basic_spam", "Basic"), ("adversarial_spam", "Adversarial")]:
+                sec = sections.get(sec_key, {})
+                summary = sec.get("summary", {})
+                if summary:
+                    cost = summary.get(m, {}).get("cost_per_1k_queries_usd", 0)
+                    costs.append(cost)
+                    x_labels.append(sec_label)
+            if costs:
+                fig_cost.add_trace(go.Bar(
+                    name=labels[m].split("(")[0].strip(), x=x_labels, y=costs,
+                    marker_color=colors.get(m, "#999"),
+                    text=[f"${c:.4f}" for c in costs], textposition="auto",
+                ))
+        fig_cost.update_layout(title="Cost per 1K Queries ($)", barmode="group",
+                               height=350, margin=dict(t=40, b=30))
+        st.plotly_chart(fig_cost, use_container_width=True, key="pres_mf_cost")
+
+    # Key findings
+    findings = []
+    if basic_summary and adv_summary:
+        db_basic = basic_summary.get("distilbert_ft", {}).get("accuracy", 0)
+        gpt_basic = basic_summary.get("gpt4omini_ft", {}).get("accuracy", 0)
+        db_adv = adv_summary.get("distilbert_ft", {}).get("accuracy", 0)
+        gpt_adv = adv_summary.get("gpt4omini_ft", {}).get("accuracy", 0)
+
+        if gpt_basic > db_basic:
+            findings.append(f"GPT-4o-mini outperforms DistilBERT on basic cases ({gpt_basic}% vs {db_basic}%)")
+        elif db_basic > gpt_basic:
+            findings.append(f"DistilBERT matches or outperforms GPT-4o-mini on basic cases ({db_basic}% vs {gpt_basic}%)")
+        else:
+            findings.append(f"Both models tied on basic cases at {db_basic}%")
+
+        if gpt_adv > db_adv:
+            findings.append(f"GPT-4o-mini more robust on adversarial cases ({gpt_adv}% vs {db_adv}%)")
+        elif db_adv > gpt_adv:
+            findings.append(f"DistilBERT more robust on adversarial cases ({db_adv}% vs {gpt_adv}%)")
+
+        db_lat = basic_summary.get("distilbert_ft", {}).get("avg_latency_ms", 0)
+        gpt_lat = basic_summary.get("gpt4omini_ft", {}).get("avg_latency_ms", 0)
+        if db_lat and gpt_lat:
+            speed_ratio = gpt_lat / db_lat
+            findings.append(f"DistilBERT is **{speed_ratio:.0f}x faster** ({db_lat:.0f}ms vs {gpt_lat:.0f}ms)")
+
+        findings.append("Size ratio: **~121x** more parameters yields only a **modest accuracy gain**")
+
+    if findings:
+        finding_items = "".join(f"<br/>&#8226; {f}" for f in findings)
+        st.markdown(f"""
+        <div class="highlight-box">
+        <strong>Key Findings -- Does 121x More Parameters = Better Spam Detection?</strong>
+        {finding_items}
+        </div>
+        """, unsafe_allow_html=True)
+
+    # LLM-as-Judge results
+    if _model_family_data.get("with_judge"):
+        judge_sums = _model_family_data.get("judge_summaries", {})
+        if judge_sums:
+            st.markdown("---")
+            st.markdown("##### LLM-as-Judge Evaluation")
+
+            for sec_key, sec_label in [("basic_spam", "Basic"), ("adversarial_spam", "Adversarial")]:
+                js = judge_sums.get(sec_key, {})
+                if not js:
+                    continue
+                st.markdown(f"**{sec_label} Cases**")
+                judge_cols = st.columns(len(models))
+                for col, m in zip(judge_cols, models):
+                    jm = js.get(m, {})
+                    with col:
+                        if jm.get("count", 0) > 0:
+                            st.metric(labels[m], f"Overall: {jm['overall']:.1f}/5")
+                            st.caption(
+                                f"C={jm['correctness']:.1f} | "
+                                f"R={jm['reasoning_quality']:.1f} | "
+                                f"F={jm['faithfulness']:.1f}"
+                            )
+                        else:
+                            st.metric(labels[m], "N/A")
+
+            # Radar chart
+            fig_radar = go.Figure()
+            radar_cats = ["Correctness", "Reasoning", "Faithfulness"]
+            for sec_key, dash in [("basic_spam", None), ("adversarial_spam", "dash")]:
+                js = judge_sums.get(sec_key, {})
+                sec_short = "Basic" if sec_key == "basic_spam" else "Adv"
+                for m in models:
+                    jm = js.get(m, {})
+                    if jm.get("count", 0) > 0:
+                        vals = [jm["correctness"], jm["reasoning_quality"], jm["faithfulness"]]
+                        fig_radar.add_trace(go.Scatterpolar(
+                            r=vals + [vals[0]],
+                            theta=radar_cats + [radar_cats[0]],
+                            fill="toself",
+                            name=f"{labels[m].split('(')[0].strip()} ({sec_short})",
+                            line=dict(color=colors.get(m, "#999"),
+                                      dash=dash),
+                            opacity=0.7 if dash else 1.0,
+                        ))
+            fig_radar.update_layout(
+                polar=dict(radialaxis=dict(visible=True, range=[0, 5])),
+                title="Judge Scores Radar", height=400,
+            )
+            st.plotly_chart(fig_radar, use_container_width=True, key="pres_mf_radar")
+
+
 # ---------------------------------------------------------------------------
 # Slide registry
 # ---------------------------------------------------------------------------
@@ -2136,6 +2374,7 @@ SLIDES = [
     ("Benchmark: Financial Ratios", slide_benchmark_ratios),
     ("Benchmark: Spam Detection", slide_benchmark_spam),
     ("Benchmark: Summary", slide_benchmark_summary),
+    ("Benchmark: Model Size", slide_benchmark_model_family),
     ("Live Demo", slide_demo_intro),
 ]
 

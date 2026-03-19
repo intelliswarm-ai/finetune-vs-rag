@@ -323,6 +323,12 @@ if test_cases_path.exists():
     with open(test_cases_path) as f:
         test_cases = json.load(f)
 
+model_family_path = DATA_DIR / "model_family_results.json"
+model_family = {}
+if model_family_path.exists():
+    with open(model_family_path) as f:
+        model_family = json.load(f)
+
 
 # ---------------------------------------------------------------------------
 # Build the deck
@@ -1920,6 +1926,191 @@ build_benchmark_slide("distilbert_66m_spam",
 
 
 # ======================================================================
+# MODEL FAMILY BENCHMARK: Does Model Size Matter?
+# ======================================================================
+CHART_COLORS_MF = {
+    "distilbert_ft": RGBColor(0xFF, 0x6B, 0x35),  # orange
+    "gpt4omini_ft": RGBColor(0x4A, 0x90, 0xD9),   # blue
+}
+MF_LABELS = {
+    "distilbert_ft": "DistilBERT (66M)",
+    "gpt4omini_ft": "GPT-4o-mini (~8B)",
+}
+LIGHT_ORANGE_BG = RGBColor(0xFF, 0xE0, 0xCC)
+
+mf_sections = model_family.get("sections", {})
+if mf_sections:
+    # --- Slide 1: Overview + Accuracy ---
+    s = new_slide()
+    add_title_bar(s, "Experiment 5: Does Model Size Matter for Fine-Tuning?",
+                  "Fine-tuned DistilBERT (66M) vs Fine-tuned GPT-4o-mini (~8B) on spam detection")
+
+    # Model cards
+    add_colored_box(s, Inches(0.5), Inches(1.4), Inches(5.8), Inches(1.0),
+                    "Fine-tuned DistilBERT",
+                    "66M params | Local inference | Near-zero cost",
+                    LIGHT_ORANGE_BG)
+    add_colored_box(s, Inches(6.8), Inches(1.4), Inches(5.8), Inches(1.0),
+                    "Fine-tuned GPT-4o-mini",
+                    "~8B params | OpenAI API | $0.30/$1.20 per 1M tokens",
+                    LIGHT_BLUE_BG)
+
+    # Accuracy chart: Basic vs Adversarial
+    mf_basic = mf_sections.get("basic_spam", {}).get("summary", {})
+    mf_adv = mf_sections.get("adversarial_spam", {}).get("summary", {})
+    mf_models = ["distilbert_ft", "gpt4omini_ft"]
+
+    acc_cats = []
+    acc_series_data = {m: [] for m in mf_models}
+    for sec_key, sec_label in [("basic_spam", "Basic (20 cases)"),
+                                ("adversarial_spam", "Adversarial (30 cases)")]:
+        sec_summary = mf_sections.get(sec_key, {}).get("summary", {})
+        if sec_summary:
+            acc_cats.append(sec_label)
+            for m in mf_models:
+                acc_series_data[m].append(sec_summary.get(m, {}).get("accuracy", 0))
+
+    if acc_cats:
+        acc_series = []
+        for m in mf_models:
+            acc_series.append((MF_LABELS[m], acc_series_data[m], CHART_COLORS_MF[m]))
+        add_bar_chart(s, Inches(0.5), Inches(2.7), Inches(6), Inches(3.8),
+                      "Accuracy: Basic vs Adversarial", acc_cats, acc_series)
+
+    # Latency chart
+    lat_cats = []
+    lat_series_data = {m: [] for m in mf_models}
+    for sec_key, sec_label in [("basic_spam", "Basic"),
+                                ("adversarial_spam", "Adversarial")]:
+        sec_summary = mf_sections.get(sec_key, {}).get("summary", {})
+        if sec_summary:
+            lat_cats.append(sec_label)
+            for m in mf_models:
+                lat_series_data[m].append(sec_summary.get(m, {}).get("avg_latency_ms", 0))
+    if lat_cats:
+        lat_series = []
+        for m in mf_models:
+            lat_series.append((MF_LABELS[m], lat_series_data[m], CHART_COLORS_MF[m]))
+        add_bar_chart(s, Inches(6.8), Inches(2.7), Inches(6), Inches(3.8),
+                      "Average Latency (ms)", lat_cats, lat_series)
+
+    add_footer(s, slide_num[0], TOTAL_SLIDES)
+
+    # --- Slide 2: Cost + Key Findings ---
+    s = new_slide()
+    add_title_bar(s, "Model Size Benchmark - Cost & Key Findings")
+
+    # Metrics table
+    mf_headers = ["Metric", "DistilBERT (66M)", "GPT-4o-mini (~8B)"]
+    mf_rows = []
+    for sec_key, sec_label in [("basic_spam", "Basic"),
+                                ("adversarial_spam", "Adversarial")]:
+        sec_summary = mf_sections.get(sec_key, {}).get("summary", {})
+        if sec_summary:
+            mf_rows.append([f"{sec_label} Accuracy"] + [
+                f"{sec_summary.get(m, {}).get('accuracy', 0)}%" for m in mf_models])
+            mf_rows.append([f"{sec_label} Avg Latency"] + [
+                f"{sec_summary.get(m, {}).get('avg_latency_ms', 0):.0f}ms" for m in mf_models])
+            mf_rows.append([f"{sec_label} Cost/1K Queries"] + [
+                _fmt_cost(sec_summary.get(m, {}).get("cost_per_1k_queries_usd", 0)) for m in mf_models])
+
+    mf_rows.append(["Parameters", "66M", "~8B (121x larger)"])
+
+    add_table(s, Inches(0.5), Inches(1.5), Inches(12.3), Inches(3.0),
+              mf_headers, mf_rows)
+
+    # Key findings
+    findings = []
+    if mf_basic and mf_adv:
+        db_basic = mf_basic.get("distilbert_ft", {}).get("accuracy", 0)
+        gpt_basic = mf_basic.get("gpt4omini_ft", {}).get("accuracy", 0)
+        db_adv = mf_adv.get("distilbert_ft", {}).get("accuracy", 0)
+        gpt_adv = mf_adv.get("gpt4omini_ft", {}).get("accuracy", 0)
+        db_lat = mf_basic.get("distilbert_ft", {}).get("avg_latency_ms", 0)
+        gpt_lat = mf_basic.get("gpt4omini_ft", {}).get("avg_latency_ms", 0)
+
+        findings.append(
+            f"Basic: GPT-4o-mini {gpt_basic}% vs DistilBERT {db_basic}% "
+            f"(+{gpt_basic - db_basic:.1f}% for 121x more parameters)")
+        findings.append(
+            f"Adversarial: GPT-4o-mini {gpt_adv}% vs DistilBERT {db_adv}% "
+            f"(+{gpt_adv - db_adv:.1f}%)")
+        if db_lat and gpt_lat:
+            findings.append(f"DistilBERT is {gpt_lat/db_lat:.0f}x faster ({db_lat:.0f}ms vs {gpt_lat:.0f}ms)")
+        findings.append("121x more parameters yields only a modest accuracy gain -- diminishing returns")
+
+    for i, f in enumerate(findings):
+        y = Inches(4.7 + i * 0.6)
+        bg = LIGHT_ORANGE_BG if i % 2 == 0 else LIGHT_BLUE_BG
+        add_colored_box(s, Inches(0.5), y, Inches(12.1), Inches(0.5), f, "", bg)
+
+    add_footer(s, slide_num[0], TOTAL_SLIDES)
+
+    # --- Slide 3: LLM-as-Judge Results (if available) ---
+    mf_with_judge = model_family.get("with_judge", False)
+    mf_judge_summaries = model_family.get("judge_summaries", {})
+
+    if mf_with_judge and mf_judge_summaries:
+        s = new_slide()
+        add_title_bar(s, "Model Size Benchmark - LLM-as-Judge Evaluation",
+                      f"Judge model: {model_family.get('judge_model', 'GPT-4o')}")
+
+        # Judge scores table
+        judge_headers = ["Section", "Model", "Correctness", "Reasoning", "Faithfulness", "Overall", "Count"]
+        judge_rows = []
+        for sec_key, sec_label in [("basic_spam", "Basic"),
+                                    ("adversarial_spam", "Adversarial")]:
+            js = mf_judge_summaries.get(sec_key, {})
+            for m in mf_models:
+                jm = js.get(m, {})
+                if jm.get("count", 0) > 0:
+                    judge_rows.append([
+                        sec_label, MF_LABELS[m],
+                        f"{jm.get('correctness', 0):.1f}",
+                        f"{jm.get('reasoning_quality', 0):.1f}",
+                        f"{jm.get('faithfulness', 0):.1f}",
+                        f"{jm.get('overall', 0):.1f}",
+                        str(jm.get("count", 0)),
+                    ])
+
+        if judge_rows:
+            add_table(s, Inches(0.5), Inches(1.5), Inches(12.3), Inches(2.5),
+                      judge_headers, judge_rows)
+
+        # Judge comparison chart (basic section)
+        basic_judge = mf_judge_summaries.get("basic_spam", {})
+        if basic_judge:
+            judge_cats = ["Correctness", "Reasoning", "Faithfulness", "Overall"]
+            judge_chart_series = []
+            for m in mf_models:
+                jm = basic_judge.get(m, {})
+                if jm.get("count", 0) > 0:
+                    vals = [jm.get("correctness", 0), jm.get("reasoning_quality", 0),
+                            jm.get("faithfulness", 0), jm.get("overall", 0)]
+                    judge_chart_series.append((MF_LABELS[m], vals, CHART_COLORS_MF[m]))
+            if judge_chart_series:
+                add_bar_chart(s, Inches(0.5), Inches(4.2), Inches(5.8), Inches(3.0),
+                              "Basic - Judge Scores (1-5)", judge_cats, judge_chart_series)
+
+        # Adversarial judge chart
+        adv_judge = mf_judge_summaries.get("adversarial_spam", {})
+        if adv_judge:
+            judge_cats = ["Correctness", "Reasoning", "Faithfulness", "Overall"]
+            judge_chart_series = []
+            for m in mf_models:
+                jm = adv_judge.get(m, {})
+                if jm.get("count", 0) > 0:
+                    vals = [jm.get("correctness", 0), jm.get("reasoning_quality", 0),
+                            jm.get("faithfulness", 0), jm.get("overall", 0)]
+                    judge_chart_series.append((MF_LABELS[m], vals, CHART_COLORS_MF[m]))
+            if judge_chart_series:
+                add_bar_chart(s, Inches(6.8), Inches(4.2), Inches(5.8), Inches(3.0),
+                              "Adversarial - Judge Scores (1-5)", judge_cats, judge_chart_series)
+
+        add_footer(s, slide_num[0], TOTAL_SLIDES)
+
+
+# ======================================================================
 # BENCHMARK INSIGHTS SLIDE
 # ======================================================================
 s = new_slide()
@@ -2038,6 +2229,9 @@ add_title_bar(s, "Summary: All Experiments at a Glance")
 
 headers = ["Experiment", "Base", "Fine-Tuned", "RAG", "Hybrid", "Winner"]
 
+mf_basic_sum = mf_sections.get("basic_spam", {}).get("summary", {}) if mf_sections else {}
+mf_adv_sum = mf_sections.get("adversarial_spam", {}).get("summary", {}) if mf_sections else {}
+
 def fmt_acc(d, key):
     v = d.get(key, {}).get("accuracy", "N/A")
     return f"{v}%" if isinstance(v, (int, float)) else v
@@ -2085,6 +2279,28 @@ if spam:
         fmt_acc(spam, "base"), fmt_acc(spam, "finetuned"),
         fmt_acc(spam, "rag"), fmt_acc(spam, "hybrid"),
         SPAM_LABELS.get(best_spam, best_spam)
+    ])
+
+# Model Family (different table structure -- append as extra row)
+if mf_basic_sum:
+    db_acc = mf_basic_sum.get("distilbert_ft", {}).get("accuracy", "N/A")
+    gpt_acc = mf_basic_sum.get("gpt4omini_ft", {}).get("accuracy", "N/A")
+    winner = "GPT-4o-mini" if gpt_acc > db_acc else "DistilBERT" if db_acc > gpt_acc else "Tied"
+    summary_rows.append([
+        "Model Size (Basic)",
+        f"{db_acc}% (66M)", f"{gpt_acc}% (~8B)",
+        "N/A", "N/A",
+        winner
+    ])
+if mf_adv_sum:
+    db_acc = mf_adv_sum.get("distilbert_ft", {}).get("accuracy", "N/A")
+    gpt_acc = mf_adv_sum.get("gpt4omini_ft", {}).get("accuracy", "N/A")
+    winner = "GPT-4o-mini" if gpt_acc > db_acc else "DistilBERT" if db_acc > gpt_acc else "Tied"
+    summary_rows.append([
+        "Model Size (Adversarial)",
+        f"{db_acc}% (66M)", f"{gpt_acc}% (~8B)",
+        "N/A", "N/A",
+        winner
     ])
 
 add_table(s, Inches(0.5), Inches(1.5), Inches(12.3), Inches(2.5),
