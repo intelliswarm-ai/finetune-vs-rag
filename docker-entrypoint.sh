@@ -153,6 +153,16 @@ else
     echo "Adversarial stress test results already pre-computed."
 fi
 
+# RAG strengths benchmark (30 cases showing RAG advantages)
+if [ ! -f "data/rag_strengths_results.json" ]; then
+    echo "Pre-computing RAG strengths benchmark results (30 test cases)..."
+    python3 app/rag_strengths_benchmark.py ${JUDGE_FLAG} \
+        && echo "RAG strengths results saved to data/rag_strengths_results.json" \
+        || echo "RAG strengths benchmark pre-computation failed (will run on demand)"
+else
+    echo "RAG strengths benchmark results already pre-computed."
+fi
+
 echo ""
 echo "Starting Streamlit on port 8501..."
 exec streamlit run app/Finetune_vs_RAG.py

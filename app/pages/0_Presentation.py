@@ -1853,6 +1853,15 @@ if _MODEL_FAMILY_PATH.exists():
     except (json.JSONDecodeError, OSError):
         pass
 
+_RAG_STRENGTHS_PATH = _Path(__file__).parent.parent.parent / "data" / "rag_strengths_results.json"
+_rag_strengths_data = {}
+if _RAG_STRENGTHS_PATH.exists():
+    try:
+        with open(_RAG_STRENGTHS_PATH) as _f:
+            _rag_strengths_data = json.load(_f)
+    except (json.JSONDecodeError, OSError):
+        pass
+
 _COLORS_MAP = {
     "base": "#E84D4D", "finbert": "#2EA04E", "finetuned": "#2EA04E",
     "rag": "#428BCA", "hybrid": "#F09319",
@@ -2338,6 +2347,339 @@ def slide_benchmark_model_family():
 
 
 # ---------------------------------------------------------------------------
+# RAG Strengths Benchmark slides
+# ---------------------------------------------------------------------------
+
+_RS_CATEGORY_DISPLAY = {
+    "direct_retrieval": "Direct Retrieval",
+    "formula_with_aligned_data": "Formula + Aligned Data",
+    "cross_document_synthesis": "Cross-Document Synthesis",
+    "contextual_interpretation": "Contextual Interpretation",
+    "trend_analysis": "Trend Analysis",
+}
+
+_RS_LABELS = {
+    "base": "Base Llama2-7B",
+    "rag": "Llama2-7B + RAG",
+    "finetuned": "FinQA-7B (FT)",
+    "hybrid": "FinQA-7B + RAG",
+}
+
+
+def slide_rag_strengths_overview():
+    """Benchmark: RAG Strengths -- Overview"""
+    import plotly.graph_objects as go
+
+    st.markdown('<p class="slide-title">RAG Strengths Benchmark</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">30 test cases designed to evaluate RAG on its structural advantages</p>', unsafe_allow_html=True)
+
+    sections = _rag_strengths_data.get("sections", {})
+    if "rag_strengths" not in sections:
+        st.warning("No RAG strengths benchmark data. Run `python app/rag_strengths_benchmark.py` first.")
+        return
+
+    sec = sections["rag_strengths"]
+    summary = sec.get("summary", {})
+    models = sec.get("models", ["base", "rag", "finetuned", "hybrid"])
+
+    st.markdown("""
+    <div class="blue-box">
+    <strong>Why this benchmark?</strong> Standard benchmarks penalize RAG because test data
+    <i>conflicts</i> with retrieved data. Here, all questions ask about Meridian National Bancorp
+    data that <b>exists</b> in the RAG knowledge base -- testing RAG on its natural strengths.
+    </div>
+    """, unsafe_allow_html=True)
+
+    ts = _rag_strengths_data.get("timestamp", "")
+    if ts:
+        st.caption(f"Results from: {ts}")
+
+    # Accuracy metric cards
+    cols = st.columns(len(models))
+    for col, m in zip(cols, models):
+        sm = summary.get(m, {})
+        with col:
+            st.metric(_RS_LABELS.get(m, m),
+                       f"{sm.get('accuracy', 0)}%",
+                       delta=f"{sm.get('correct', 0)}/{sm.get('total', 0)}")
+
+    # Charts side by side
+    chart_col1, chart_col2 = st.columns(2)
+
+    with chart_col1:
+        fig = go.Figure()
+        for m in models:
+            sm = summary.get(m, {})
+            fig.add_trace(go.Bar(
+                name=_RS_LABELS.get(m, m),
+                x=["Accuracy (%)"],
+                y=[sm.get("accuracy", 0)],
+                marker_color=_COLORS_MAP.get(m, "#999"),
+                text=[f"{sm.get('accuracy', 0)}%"], textposition="auto",
+            ))
+        fig.update_layout(title="Overall Accuracy", barmode="group",
+                           yaxis_range=[0, 105], height=400)
+        st.plotly_chart(fig, use_container_width=True, key="pres_rs_acc")
+
+    with chart_col2:
+        # Category breakdown chart
+        cat_names = []
+        cat_data = {m: [] for m in models}
+        for k, v in sorted(summary.items()):
+            if not k.startswith("category_"):
+                continue
+            cat_key = k.replace("category_", "")
+            cat_names.append(_RS_CATEGORY_DISPLAY.get(cat_key, cat_key))
+            for m in models:
+                cat_data[m].append(v.get(f"{m}_accuracy", 0))
+
+        if cat_names:
+            fig2 = go.Figure()
+            for m in models:
+                fig2.add_trace(go.Bar(
+                    name=_RS_LABELS.get(m, m),
+                    x=cat_names, y=cat_data[m],
+                    marker_color=_COLORS_MAP.get(m, "#999"),
+                ))
+            fig2.update_layout(title="Accuracy by Category", barmode="group",
+                                yaxis_range=[0, 105], height=400,
+                                xaxis_tickangle=-25)
+            st.plotly_chart(fig2, use_container_width=True, key="pres_rs_cat")
+
+
+def slide_rag_strengths_advantage():
+    """Benchmark: RAG Advantage Analysis"""
+    import plotly.graph_objects as go
+
+    st.markdown('<p class="slide-title">RAG Advantage: Where Retrieval Wins</p>', unsafe_allow_html=True)
+
+    sections = _rag_strengths_data.get("sections", {})
+    if "rag_strengths" not in sections:
+        st.warning("No RAG strengths data available.")
+        return
+
+    summary = sections["rag_strengths"].get("summary", {})
+
+    rag_acc = summary.get("rag", {}).get("accuracy", 0)
+    base_acc = summary.get("base", {}).get("accuracy", 0)
+    ft_acc = summary.get("finetuned", {}).get("accuracy", 0)
+    hyb_acc = summary.get("hybrid", {}).get("accuracy", 0)
+
+    # RAG advantage chart by category
+    col1, col2 = st.columns([3, 2])
+
+    with col1:
+        cat_names = []
+        rag_vs_base = []
+        rag_vs_ft = []
+        for k, v in sorted(summary.items()):
+            if not k.startswith("category_"):
+                continue
+            cat_key = k.replace("category_", "")
+            cat_names.append(_RS_CATEGORY_DISPLAY.get(cat_key, cat_key))
+            r_acc = v.get("rag_accuracy", 0)
+            b_acc = v.get("base_accuracy", 0)
+            f_acc = v.get("finetuned_accuracy", 0)
+            rag_vs_base.append(r_acc - b_acc)
+            rag_vs_ft.append(r_acc - f_acc)
+
+        if cat_names:
+            fig = go.Figure()
+            fig.add_trace(go.Bar(name="RAG vs Base", x=cat_names, y=rag_vs_base,
+                                  marker_color="#428BCA"))
+            fig.add_trace(go.Bar(name="RAG vs Fine-tuned", x=cat_names, y=rag_vs_ft,
+                                  marker_color="#2EA04E"))
+            fig.add_hline(y=0, line_dash="dash", line_color="gray")
+            fig.update_layout(title="RAG Advantage (percentage points)", barmode="group",
+                               height=450, xaxis_tickangle=-25)
+            st.plotly_chart(fig, use_container_width=True, key="pres_rs_adv")
+
+    with col2:
+        st.markdown(f"""
+        <div class="blue-box">
+        <strong>Overall Impact</strong><br/>
+        RAG: <b>{rag_acc}%</b> vs Base: {base_acc}% (+{rag_acc - base_acc:.0f}pp)<br/>
+        RAG: <b>{rag_acc}%</b> vs FT: {ft_acc}% (+{rag_acc - ft_acc:.0f}pp)<br/>
+        Hybrid: <b>{hyb_acc}%</b> -- best overall
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div class="green-box">
+        <strong>The Data Alignment Effect</strong><br/>
+        Standard benchmark RAG: ~15% (data conflict)<br/>
+        This benchmark RAG: <b>{rag_acc}%</b> (aligned data)<br/>
+        <i>The problem was never RAG -- it was the data mismatch.</i>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="orange-box">
+        <strong>Production Insight</strong><br/>
+        In production, RAG always retrieves from <i>your</i> documents --
+        the aligned case is the real-world case. These results better
+        predict actual RAG performance.
+        </div>
+        """, unsafe_allow_html=True)
+
+
+def slide_rag_strengths_judge():
+    """Benchmark: LLM Judge -- RAG Strengths Quality"""
+    import plotly.graph_objects as go
+
+    st.markdown('<p class="slide-title">LLM-as-Judge: RAG Strengths Quality</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">GPT-4o structured evaluation: Correctness, Reasoning, Faithfulness (1-5)</p>', unsafe_allow_html=True)
+
+    judge_sums = _rag_strengths_data.get("judge_summaries", {}).get("rag_strengths", {})
+    if not judge_sums:
+        st.info("No LLM-as-Judge data. Run with `--with-judge` flag to enable.")
+        return
+
+    models = ["base", "rag", "finetuned", "hybrid"]
+
+    # Metric cards
+    cols = st.columns(len(models))
+    for col, m in zip(cols, models):
+        js = judge_sums.get(m, {})
+        with col:
+            overall = js.get("overall", 0)
+            count = js.get("count", 0)
+            st.metric(_RS_LABELS.get(m, m), f"{overall:.2f} / 5.00",
+                       delta=f"({count} judged)")
+            st.caption(
+                f"C: {js.get('correctness', 0):.1f} | "
+                f"R: {js.get('reasoning_quality', 0):.1f} | "
+                f"F: {js.get('faithfulness', 0):.1f}")
+
+    chart_col1, chart_col2 = st.columns(2)
+
+    with chart_col1:
+        # Grouped bar chart
+        dimensions = ["Correctness", "Reasoning Quality", "Faithfulness"]
+        fig = go.Figure()
+        for m in models:
+            js = judge_sums.get(m, {})
+            if js.get("count", 0) > 0:
+                fig.add_trace(go.Bar(
+                    name=_RS_LABELS.get(m, m),
+                    x=dimensions,
+                    y=[js.get("correctness", 0), js.get("reasoning_quality", 0),
+                       js.get("faithfulness", 0)],
+                    marker_color=_COLORS_MAP.get(m, "#999"),
+                ))
+        fig.update_layout(title="Judge Scores by Dimension", barmode="group",
+                           yaxis_range=[0, 5.5], height=400)
+        st.plotly_chart(fig, use_container_width=True, key="pres_rs_judge_bar")
+
+    with chart_col2:
+        # Radar chart
+        fig_radar = go.Figure()
+        for m in models:
+            js = judge_sums.get(m, {})
+            if js.get("count", 0) > 0:
+                vals = [js.get("correctness", 0), js.get("reasoning_quality", 0),
+                        js.get("faithfulness", 0)]
+                vals.append(vals[0])
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=vals, theta=dimensions + [dimensions[0]],
+                    name=_RS_LABELS.get(m, m),
+                    line_color=_COLORS_MAP.get(m, "#999"),
+                    fill="toself", opacity=0.3,
+                ))
+        fig_radar.update_layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0, 5])),
+            title="Judge Scores Radar", height=400,
+        )
+        st.plotly_chart(fig_radar, use_container_width=True, key="pres_rs_radar")
+
+    rag_faith = judge_sums.get("rag", {}).get("faithfulness", 0)
+    base_faith = judge_sums.get("base", {}).get("faithfulness", 0)
+    st.markdown(f"""
+    <div class="green-box">
+    <strong>Key Finding:</strong> RAG models score significantly higher on <b>faithfulness</b>
+    ({rag_faith:.1f} vs {base_faith:.1f} for base) -- retrieved documents ground the model's
+    responses and reduce hallucination. This is the primary value proposition of RAG in production.
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def slide_rag_strengths_conclusions():
+    """Benchmark: RAG Strengths -- Conclusions"""
+    st.markdown('<p class="slide-title">RAG Strengths: Conclusions</p>', unsafe_allow_html=True)
+
+    sections = _rag_strengths_data.get("sections", {})
+    judge_sums = _rag_strengths_data.get("judge_summaries", {}).get("rag_strengths", {})
+    if "rag_strengths" not in sections:
+        st.warning("No RAG strengths data available.")
+        return
+
+    summary = sections["rag_strengths"].get("summary", {})
+    rag_acc = summary.get("rag", {}).get("accuracy", 0)
+    base_acc = summary.get("base", {}).get("accuracy", 0)
+    ft_acc = summary.get("finetuned", {}).get("accuracy", 0)
+    hyb_acc = summary.get("hybrid", {}).get("accuracy", 0)
+    rag_faith = judge_sums.get("rag", {}).get("faithfulness", 0) if judge_sums else 0
+    base_faith = judge_sums.get("base", {}).get("faithfulness", 0) if judge_sums else 0
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"""
+        <div class="green-box">
+        <strong>1. RAG excels on factual retrieval</strong><br/>
+        {rag_acc}% accuracy when KB has the data --
+        +{rag_acc - base_acc:.0f}pp over base, +{rag_acc - ft_acc:.0f}pp over fine-tuning
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div class="blue-box" style="background: linear-gradient(135deg, #1565c0, #1e3a5f); color: white;">
+        <strong>2. Data alignment is critical</strong><br/>
+        Standard benchmark RAG: ~15% (data conflict)<br/>
+        This benchmark: <b>{rag_acc}%</b> (aligned data)<br/>
+        The problem was never RAG -- it was the mismatch.
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div class="green-box">
+        <strong>3. Hybrid is best of both worlds</strong><br/>
+        {hyb_acc}% -- fine-tuning provides reasoning skills,
+        RAG provides factual grounding. +{hyb_acc - max(rag_acc, ft_acc):.0f}pp above best single approach.
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        if rag_faith:
+            st.markdown(f"""
+            <div class="blue-box" style="background: linear-gradient(135deg, #1565c0, #1e3a5f); color: white;">
+            <strong>4. RAG reduces hallucination</strong><br/>
+            Judge faithfulness: RAG {rag_faith:.1f}/5 vs Base {base_faith:.1f}/5<br/>
+            Retrieved documents anchor responses in facts.
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="orange-box">
+        <strong>5. Know your use case</strong><br/>
+        <b>Proprietary documents</b> -> RAG<br/>
+        <b>Domain reasoning</b> -> Fine-tuning<br/>
+        <b>Both</b> -> Hybrid<br/>
+        Each solves a different problem.
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="highlight-box">
+        <strong>The Production Takeaway</strong><br/>
+        RAG is not a replacement for fine-tuning, and fine-tuning is not a
+        replacement for RAG. They solve <i>fundamentally different problems</i>.
+        The strongest systems combine both.
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------------------------
 # Slide registry
 # ---------------------------------------------------------------------------
 SLIDES = [
@@ -2375,6 +2717,10 @@ SLIDES = [
     ("Benchmark: Spam Detection", slide_benchmark_spam),
     ("Benchmark: Summary", slide_benchmark_summary),
     ("Benchmark: Model Size", slide_benchmark_model_family),
+    ("RAG Strengths: Overview", slide_rag_strengths_overview),
+    ("RAG Strengths: Advantage", slide_rag_strengths_advantage),
+    ("RAG Strengths: Judge", slide_rag_strengths_judge),
+    ("RAG Strengths: Conclusions", slide_rag_strengths_conclusions),
     ("Live Demo", slide_demo_intro),
 ]
 

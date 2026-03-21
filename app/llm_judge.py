@@ -238,6 +238,57 @@ def judge_spam(input_text: str, expected: str, model_output: str,
     return _call_judge(prompt, judge_model)
 
 
+_RETRIEVAL_QA_JUDGE_PROMPT = """You are an expert evaluator assessing the quality of a retrieval-augmented question answering response about a financial institution (Meridian National Bancorp).
+
+TASK: Evaluate how well the model answered a factual question that requires retrieving information from financial documents.
+
+QUESTION: {question}
+EXPECTED ANSWER: {expected}
+MODEL'S ANSWER: {model_output}
+SOURCE DOCUMENTS: {source_documents}
+CATEGORY: {category}
+
+Score each dimension from 1 (worst) to 5 (best):
+
+1. CORRECTNESS (1-5): Does the answer contain the correct factual information?
+   - 5: Contains the exact expected numbers/facts
+   - 4: Contains the key facts with minor imprecision
+   - 3: Partially correct -- some facts right, some wrong or missing
+   - 2: Mostly incorrect but shows some relevant knowledge
+   - 1: Completely wrong, refuses to answer, or hallucinates facts
+
+2. REASONING QUALITY (1-5): Does the answer demonstrate understanding and provide useful context?
+   - 5: Clear explanation with relevant context and interpretation
+   - 4: Good explanation with minor gaps
+   - 3: Basic answer without much context or explanation
+   - 2: Vague or confusing response
+   - 1: No meaningful reasoning
+
+3. FAITHFULNESS (1-5): Is the answer grounded in the source documents (not hallucinated)?
+   - 5: All facts clearly come from the documents, no fabrication
+   - 4: Mostly grounded, minor inferences that are reasonable
+   - 3: Mix of grounded facts and unverifiable claims
+   - 2: Significant hallucination or fabricated details
+   - 1: Answer is entirely fabricated or contradicts source documents
+
+Respond ONLY with valid JSON in this exact format:
+{{"correctness": <1-5>, "reasoning_quality": <1-5>, "faithfulness": <1-5>, "explanation": "<one sentence>"}}"""
+
+
+def judge_retrieval_qa(question: str, expected: str, model_output: str,
+                       source_documents: str = "", category: str = "",
+                       judge_model: str = None) -> Optional[JudgeScore]:
+    """Judge a retrieval-augmented QA result."""
+    prompt = _RETRIEVAL_QA_JUDGE_PROMPT.format(
+        question=question,
+        expected=expected,
+        model_output=model_output[:800],
+        source_documents=source_documents or "N/A",
+        category=category or "general",
+    )
+    return _call_judge(prompt, judge_model)
+
+
 def _call_judge(prompt: str, judge_model: str = None) -> Optional[JudgeScore]:
     """Call the judge model and parse response into a JudgeScore."""
     client = _get_judge_client()

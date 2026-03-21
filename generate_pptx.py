@@ -329,6 +329,12 @@ if model_family_path.exists():
     with open(model_family_path) as f:
         model_family = json.load(f)
 
+rag_strengths_path = DATA_DIR / "rag_strengths_results.json"
+rag_strengths = {}
+if rag_strengths_path.exists():
+    with open(rag_strengths_path) as f:
+        rag_strengths = json.load(f)
+
 
 # ---------------------------------------------------------------------------
 # Build the deck
@@ -340,11 +346,20 @@ blank_layout = prs.slide_layouts[6]  # blank
 
 TOTAL_SLIDES = 55  # approximate total (includes token/cost/quality slides for 4 experiments)
 slide_num = [0]
+all_slide_notes = []  # collect (slide_num, title, notes) for markdown export
 
 
 def new_slide():
     slide_num[0] += 1
     return prs.slides.add_slide(blank_layout)
+
+
+def add_notes(slide, title, notes_text):
+    """Add speaker notes to a slide and record for markdown export."""
+    notes_slide = slide.notes_slide
+    tf = notes_slide.notes_text_frame
+    tf.text = notes_text
+    all_slide_notes.append((slide_num[0], title, notes_text))
 
 
 # ======================================================================
@@ -2354,6 +2369,250 @@ add_footer(s, slide_num[0], TOTAL_SLIDES)
 
 
 # ======================================================================
+# RAG STRENGTHS BENCHMARK
+# ======================================================================
+rag_str_section = rag_strengths.get("sections", {}).get("rag_strengths", {})
+rag_str_summary = rag_str_section.get("summary", {})
+rag_str_judge = rag_strengths.get("judge_summaries", {}).get("rag_strengths", {})
+
+if rag_str_summary:
+    RS_LABELS = {
+        "base": "Base Llama2-7B",
+        "rag": "Llama2-7B + RAG",
+        "finetuned": "FinQA-7B (FT)",
+        "hybrid": "FinQA-7B + RAG",
+    }
+    RS_MODELS = ["base", "rag", "finetuned", "hybrid"]
+    RS_CHART_COLORS = {
+        "base": CHART_RED,
+        "rag": CHART_BLUE,
+        "finetuned": CHART_GREEN,
+        "hybrid": CHART_ORANGE,
+    }
+    RS_CATEGORY_DISPLAY = {
+        "direct_retrieval": "Direct Retrieval",
+        "formula_with_aligned_data": "Formula + Aligned",
+        "cross_document_synthesis": "Cross-Doc Synthesis",
+        "contextual_interpretation": "Contextual Interp.",
+        "trend_analysis": "Trend Analysis",
+    }
+
+    # --- Slide: RAG Strengths Overview ---
+    s = new_slide()
+    add_title_bar(s, "RAG Strengths Benchmark",
+                  "30 cases where RAG has a structural advantage")
+
+    add_textbox(s, Inches(0.5), Inches(1.4), Inches(12.3), Inches(0.7),
+                "Standard benchmarks penalize RAG because test data conflicts with "
+                "retrieved data. This benchmark asks questions about the actual data "
+                "in the RAG knowledge base -- testing RAG on its natural strengths.",
+                font_size=14, color=DARK)
+
+    # Accuracy metric boxes
+    box_colors = {"base": LIGHT_RED_BG, "rag": LIGHT_BLUE_BG,
+                  "finetuned": LIGHT_GREEN_BG, "hybrid": LIGHT_YELLOW_BG}
+    for i, m in enumerate(RS_MODELS):
+        sm = rag_str_summary.get(m, {})
+        acc = sm.get("accuracy", 0)
+        correct = sm.get("correct", 0)
+        total = sm.get("total", 0)
+        add_colored_box(s, Inches(0.5 + i * 3.15), Inches(2.2), Inches(2.9), Inches(1.0),
+                        f"{RS_LABELS[m]}", f"{acc}%  ({correct}/{total})",
+                        box_colors.get(m, LIGHT_GREY))
+
+    # Accuracy chart
+    categories = [RS_LABELS[m] for m in RS_MODELS]
+    series = [("Accuracy", [rag_str_summary.get(m, {}).get("accuracy", 0) for m in RS_MODELS],
+               CHART_BLUE)]
+    add_bar_chart(s, Inches(0.5), Inches(3.4), Inches(6.0), Inches(3.5),
+                  "Overall Accuracy (%)", categories, series)
+
+    # Category table
+    cat_headers = ["Category", "Cases", "Base", "RAG", "FT", "Hybrid"]
+    cat_rows = []
+    for k, v in sorted(rag_str_summary.items()):
+        if not k.startswith("category_"):
+            continue
+        cat_key = k.replace("category_", "")
+        cat_name = RS_CATEGORY_DISPLAY.get(cat_key, cat_key.replace("_", " ").title())
+        cat_rows.append([
+            cat_name, str(v.get("total", 0)),
+            f"{v.get('base_accuracy', 0)}%", f"{v.get('rag_accuracy', 0)}%",
+            f"{v.get('finetuned_accuracy', 0)}%", f"{v.get('hybrid_accuracy', 0)}%",
+        ])
+    if cat_rows:
+        add_table(s, Inches(6.8), Inches(3.4), Inches(6.0), Inches(3.5),
+                  cat_headers, cat_rows)
+
+    add_footer(s, slide_num[0], TOTAL_SLIDES)
+    add_notes(s, "RAG Strengths Overview",
+              "This benchmark proves that RAG performs dramatically better when test data "
+              "aligns with the knowledge base. Standard benchmarks showed RAG at 15% on numerical "
+              "tasks due to data conflicts; here RAG achieves 87% because retrieved data helps "
+              "rather than hurts.")
+
+    # --- Slide: RAG Advantage Analysis ---
+    s = new_slide()
+    add_title_bar(s, "RAG Advantage: Category Breakdown",
+                  "How much does RAG improve over base and fine-tuned models?")
+
+    # Category accuracy chart
+    cat_names = []
+    rag_vs_base = []
+    rag_vs_ft = []
+    for k, v in sorted(rag_str_summary.items()):
+        if not k.startswith("category_"):
+            continue
+        cat_key = k.replace("category_", "")
+        cat_names.append(RS_CATEGORY_DISPLAY.get(cat_key, cat_key))
+        r_acc = v.get("rag_accuracy", 0)
+        b_acc = v.get("base_accuracy", 0)
+        f_acc = v.get("finetuned_accuracy", 0)
+        rag_vs_base.append(r_acc - b_acc)
+        rag_vs_ft.append(r_acc - f_acc)
+
+    if cat_names:
+        adv_series = [
+            ("RAG vs Base", rag_vs_base, CHART_BLUE),
+            ("RAG vs Fine-Tuned", rag_vs_ft, CHART_GREEN),
+        ]
+        add_bar_chart(s, Inches(0.5), Inches(1.5), Inches(7.5), Inches(4.0),
+                      "RAG Advantage (percentage points)", cat_names, adv_series)
+
+    # Key insights boxes
+    rag_acc = rag_str_summary.get("rag", {}).get("accuracy", 0)
+    base_acc = rag_str_summary.get("base", {}).get("accuracy", 0)
+    ft_acc = rag_str_summary.get("finetuned", {}).get("accuracy", 0)
+    hyb_acc = rag_str_summary.get("hybrid", {}).get("accuracy", 0)
+
+    insights = [
+        f"RAG: {rag_acc}% vs Base: {base_acc}% -- "
+        f"+{rag_acc - base_acc:.0f}pp from retrieval alone",
+        f"Hybrid: {hyb_acc}% -- combines retrieval + reasoning for best results",
+        "Direct retrieval: base 12.5% vs RAG 75% -- RAG's biggest advantage",
+        "Standard benchmark RAG: ~15% (conflicting data) vs here: "
+        f"{rag_acc}% (aligned data)",
+    ]
+    for i, insight in enumerate(insights):
+        bg = LIGHT_BLUE_BG if i < 2 else LIGHT_GREEN_BG
+        add_colored_box(s, Inches(8.3), Inches(1.5 + i * 1.3), Inches(4.5), Inches(1.1),
+                        insight, "", bg)
+
+    add_footer(s, slide_num[0], TOTAL_SLIDES)
+    add_notes(s, "RAG Advantage Analysis",
+              "The category breakdown reveals where RAG provides the most value. "
+              "Direct retrieval shows the largest gap because base models literally cannot "
+              "access proprietary document data. Cross-document synthesis benefits most from "
+              "hybrid because it requires both retrieval and reasoning.")
+
+    # --- Slide: LLM Judge Evaluation ---
+    if rag_str_judge:
+        s = new_slide()
+        add_title_bar(s, "LLM-as-Judge: RAG Strengths Quality Assessment",
+                      "GPT-4o structured scoring across 30 retrieval QA cases")
+
+        # Judge scores table
+        judge_headers = ["Model", "Correctness", "Reasoning", "Faithfulness", "Overall"]
+        judge_rows = []
+        for m in RS_MODELS:
+            jm = rag_str_judge.get(m, {})
+            if jm.get("count", 0) > 0:
+                judge_rows.append([
+                    RS_LABELS[m],
+                    f"{jm.get('correctness', 0):.1f} / 5",
+                    f"{jm.get('reasoning_quality', 0):.1f} / 5",
+                    f"{jm.get('faithfulness', 0):.1f} / 5",
+                    f"{jm.get('overall', 0):.2f} / 5",
+                ])
+        if judge_rows:
+            add_table(s, Inches(0.5), Inches(1.5), Inches(7.5), Inches(2.5),
+                      judge_headers, judge_rows)
+
+        # Judge scores chart
+        judge_cats = ["Correctness", "Reasoning", "Faithfulness"]
+        judge_series = []
+        for m in RS_MODELS:
+            jm = rag_str_judge.get(m, {})
+            if jm.get("count", 0) > 0:
+                judge_series.append((
+                    RS_LABELS[m],
+                    [jm.get("correctness", 0), jm.get("reasoning_quality", 0),
+                     jm.get("faithfulness", 0)],
+                    RS_CHART_COLORS.get(m, CHART_BLUE),
+                ))
+        if judge_series:
+            add_bar_chart(s, Inches(0.5), Inches(4.2), Inches(7.5), Inches(3.0),
+                          "Judge Scores by Dimension (1-5)", judge_cats, judge_series)
+
+        # Key judge insights
+        rag_faith = rag_str_judge.get("rag", {}).get("faithfulness", 0)
+        base_faith = rag_str_judge.get("base", {}).get("faithfulness", 0)
+        rag_overall = rag_str_judge.get("rag", {}).get("overall", 0)
+        hyb_overall = rag_str_judge.get("hybrid", {}).get("overall", 0)
+
+        add_colored_box(s, Inches(8.3), Inches(1.5), Inches(4.5), Inches(1.3),
+                        "Faithfulness: RAG's Key Advantage",
+                        f"RAG: {rag_faith:.1f} vs Base: {base_faith:.1f} -- retrieval "
+                        "grounds responses in documents, reducing hallucination",
+                        LIGHT_BLUE_BG)
+        add_colored_box(s, Inches(8.3), Inches(3.0), Inches(4.5), Inches(1.3),
+                        "Overall Quality",
+                        f"Hybrid: {hyb_overall:.2f}/5 -- highest across all dimensions. "
+                        f"RAG: {rag_overall:.2f}/5 -- strong factual grounding",
+                        LIGHT_GREEN_BG)
+        add_colored_box(s, Inches(8.3), Inches(4.5), Inches(4.5), Inches(1.3),
+                        "Production Implication",
+                        "RAG reduces hallucination risk by anchoring answers "
+                        "in retrieved documents -- critical for financial applications",
+                        LIGHT_YELLOW_BG)
+
+        add_footer(s, slide_num[0], TOTAL_SLIDES)
+        add_notes(s, "LLM Judge RAG Strengths",
+                  "The GPT-4o judge confirms that RAG dramatically improves faithfulness "
+                  "scores. This is the primary production value of RAG: it reduces hallucination "
+                  "by grounding model responses in actual documents. The hybrid approach "
+                  "achieves the best overall quality by combining retrieval with reasoning skills.")
+
+    # --- Slide: Conclusions ---
+    s = new_slide()
+    add_title_bar(s, "RAG Strengths: Conclusions",
+                  "When and why RAG provides clear value")
+
+    conclusions_list = [
+        ("RAG excels on factual retrieval",
+         f"RAG achieves {rag_acc}% when the KB has the answer -- "
+         f"+{rag_acc - base_acc:.0f}pp over base, +{rag_acc - ft_acc:.0f}pp over fine-tuning",
+         LIGHT_BLUE_BG),
+        ("Data alignment is critical",
+         f"Standard benchmark RAG: ~15% (data conflict). This benchmark: {rag_acc}% "
+         "(aligned data). The problem was never RAG itself.",
+         LIGHT_GREEN_BG),
+        ("Hybrid is best of both worlds",
+         f"Hybrid: {hyb_acc}% -- fine-tuning provides reasoning skills, "
+         "RAG provides factual grounding. Together: highest accuracy.",
+         LIGHT_GREEN_BG),
+        ("RAG reduces hallucination",
+         f"Judge faithfulness: RAG {rag_faith:.1f}/5 vs Base {base_faith:.1f}/5. "
+         "Retrieved documents anchor responses in facts.",
+         LIGHT_BLUE_BG),
+        ("Know your use case",
+         "Proprietary documents -> RAG. Domain reasoning -> Fine-tuning. "
+         "Both -> Hybrid. Each solves a different problem.",
+         LIGHT_YELLOW_BG),
+    ]
+    for i, (title, body, bg) in enumerate(conclusions_list):
+        add_colored_box(s, Inches(0.5), Inches(1.5 + i * 1.15), Inches(12.3), Inches(1.0),
+                        title, body, bg)
+
+    add_footer(s, slide_num[0], TOTAL_SLIDES)
+    add_notes(s, "RAG Strengths Conclusions",
+              "The key takeaway is that RAG and fine-tuning solve fundamentally different "
+              "problems. RAG provides knowledge (access to documents the model has never seen), "
+              "while fine-tuning provides skills (domain-specific reasoning). The strongest "
+              "production systems combine both approaches.")
+
+
+# ======================================================================
 # FINAL SLIDE: Thank You
 # ======================================================================
 s = new_slide()
@@ -2376,6 +2635,496 @@ add_textbox(s, Inches(1), Inches(5.0), Inches(11), Inches(1.5),
 actual_total = slide_num[0]
 # (Footers already written with approximate count -- acceptable)
 
+
+# ---------------------------------------------------------------------------
+# Speaker Notes -- added to all slides after creation
+# ---------------------------------------------------------------------------
+SLIDE_NOTES = {
+    # --- PART 1: INTRODUCTORY SLIDES ---
+    1: ("Title",
+        "Welcome everyone. Today we're exploring one of the most important decisions in applied AI: "
+        "when to fine-tune a model versus when to use Retrieval-Augmented Generation.\n\n"
+        "The key insight we'll demonstrate with real benchmarks: fine-tuning teaches a model new SKILLS "
+        "(reasoning, calculation, pattern recognition), while RAG provides new INFORMATION (facts, documents, context). "
+        "These solve fundamentally different problems, and the best systems often combine both.\n\n"
+        "This presentation includes a live demo -- every number you'll see comes from models we actually ran."),
+
+    2: ("Agenda",
+        "We'll cover four main parts. Part 1 sets the foundation -- what are LLMs and why do they struggle "
+        "with specialized tasks. Part 2 goes deep on RAG and fine-tuning: how they work, where each shines, "
+        "and a practical decision framework. Part 3 surveys the tooling ecosystem so you can actually build these systems. "
+        "Part 4 is the evidence -- controlled benchmarks across sentiment analysis, numerical reasoning, "
+        "financial ratios, and spam detection, plus a model size comparison.\n\n"
+        "Feel free to ask questions at any point."),
+
+    3: ("What Are LLMs?",
+        "LLMs are trained on trillions of tokens from the internet, books, and code. They learn language patterns, "
+        "factual knowledge, and basic reasoning. The key point: they are generalists by design.\n\n"
+        "An analogy: an LLM is like a well-read university graduate. They can discuss almost any topic intelligently, "
+        "but they're not a specialist in any one field. You wouldn't ask a fresh graduate to calculate complex financial "
+        "ratios from SEC filings without additional training.\n\n"
+        "Note the parameter counts in the table -- these models range from 7 billion to potentially over a trillion parameters. "
+        "More parameters generally means more knowledge capacity, but as we'll see later, size isn't everything."),
+
+    4: ("The Specialization Challenge",
+        "This is the core problem we're solving. Generic LLMs fail on domain tasks in predictable ways.\n\n"
+        "In our benchmarks, we saw base BERT get only 45% accuracy on financial sentiment -- barely better than random "
+        "for a 3-class problem. It doesn't understand that 'restructuring charges' implies negative sentiment in finance, "
+        "even though in general English it's a neutral word.\n\n"
+        "On the right side: domain experts need answers they can trust. In regulated industries like finance or healthcare, "
+        "a wrong answer isn't just unhelpful -- it can be a compliance violation.\n\n"
+        "The efficiency ratio example is real: we tested this, and base Llama2-7B gets the formula wrong ~85% of the time."),
+
+    5: ("Three Approaches to Specialization",
+        "Think of these as a spectrum of effort vs. impact.\n\n"
+        "Prompt engineering is the starting point -- write better instructions, add examples. It's fast but limited. "
+        "You can't teach a model new math skills through prompting alone.\n\n"
+        "RAG is the middle ground -- retrieve relevant documents and inject them into the prompt. Great for knowledge-intensive "
+        "tasks, but the model's underlying capabilities don't change.\n\n"
+        "Fine-tuning is the highest-impact approach -- you actually update the model's weights. The model learns new patterns, "
+        "reasoning strategies, and domain-specific behavior. But it requires training data and compute.\n\n"
+        "There's no universally 'best' approach -- the right choice depends on your specific task. "
+        "That's what our benchmarks will help clarify."),
+
+    6: ("RAG: How It Works",
+        "RAG has four steps. First, the user's question is converted into a vector using an embedding model. "
+        "Second, this vector is used to search a vector database for similar document chunks. "
+        "Third, the top-K results are prepended to the prompt. Fourth, the LLM generates an answer using this augmented context.\n\n"
+        "The critical insight: the LLM's weights are never modified. You're not teaching it anything new -- "
+        "you're showing it relevant information at inference time.\n\n"
+        "In our system, we use all-MiniLM-L6-v2 for embeddings and ChromaDB as the vector store. "
+        "The LLM is the same base model -- we just give it better context."),
+
+    7: ("RAG: Benefits",
+        "RAG's biggest advantages are speed-to-deploy and dynamic knowledge.\n\n"
+        "No training required means you can start today with any LLM API. No GPUs, no training data preparation. "
+        "This is why many companies start with RAG -- it's the fastest path to a working prototype.\n\n"
+        "Dynamic knowledge is huge for use cases where information changes frequently. A RAG system can ingest "
+        "new documents without any model retraining.\n\n"
+        "Source citations are critical for enterprise use cases. When an analyst asks a question, they need to verify "
+        "the answer against the source document. RAG provides this traceability out of the box."),
+
+    8: ("RAG: Limitations",
+        "This slide is crucial for understanding WHEN RAG falls short.\n\n"
+        "Point 1 is the most important: RAG cannot teach new skills. If the base model can't do multi-step arithmetic, "
+        "retrieving a formula doesn't help -- it still can't apply it correctly.\n\n"
+        "Point 5 matters for production: RAG adds 200-600ms of latency for the embedding and retrieval steps. "
+        "In our benchmarks, RAG approaches are consistently 3-5x slower than fine-tuned models.\n\n"
+        "Point 6 is often overlooked: retrieved documents consume context window space, leaving less room for the actual "
+        "reasoning. With a 4K context window, 3 retrieved chunks of 500 tokens each already uses 37% of your context.\n\n"
+        "Bottom line: RAG is a knowledge tool, not a skill tool."),
+
+    9: ("Fine-Tuning: How It Works",
+        "The key distinction from RAG: fine-tuning modifies the model's weights. The knowledge and skills become "
+        "part of the model itself.\n\n"
+        "The training data format matters enormously. For FinQA, each example is a financial table + question + "
+        "step-by-step reasoning program. The model doesn't just learn the answer -- it learns HOW to arrive at the answer.\n\n"
+        "After fine-tuning, the model carries these capabilities everywhere. No retrieval step needed. "
+        "No external database dependency. The skill is baked in.\n\n"
+        "Compare the two boxes at the bottom: RAG gives information AT query time. Fine-tuning gives skills PERMANENTLY."),
+
+    10: ("Fine-Tuning Methods",
+         "Three methods, each trading off between capability and resource requirements.\n\n"
+         "Full fine-tuning updates every parameter -- for Llama2-7B that's 7 billion weights. "
+         "Requires multiple high-end GPUs (A100/H100). Best accuracy but highest cost.\n\n"
+         "LoRA is the game-changer that made fine-tuning accessible. It freezes the original model and adds tiny adapter "
+         "layers (typically 0.1-1% of total parameters). Quality is surprisingly close to full fine-tuning.\n\n"
+         "QLoRA combines LoRA with 4-bit quantization. Our FinQA-7B model was trained this way -- a 7B model fine-tuned "
+         "on a single GPU. This democratized fine-tuning for the open-source community.\n\n"
+         "Practical advice: start with QLoRA. You can always scale up if you need that extra 1-2% accuracy."),
+
+    11: ("Fine-Tuning: Key Benefits",
+         "Let's talk numbers from our actual benchmarks.\n\n"
+         "Accuracy: FinQA-7B achieves 61.2% on numerical reasoning vs 15.3% for RAG. That's a 4x improvement -- "
+         "not because it has more information, but because it's learned HOW to reason about financial tables.\n\n"
+         "Consistency: fine-tuned models produce predictable output formats. In production, this matters enormously "
+         "for downstream processing. RAG output is more variable because the model sees different context each time.\n\n"
+         "Latency: ~200ms for fine-tuned vs ~800ms for RAG. No embedding step, no vector search, no context assembly. "
+         "Just inference. At scale, this 4x speedup translates directly to cost savings."),
+
+    12: ("Our Models: FinBERT & FinQA-7B",
+         "These are real, published models that anyone can use.\n\n"
+         "FinBERT is by Prosus AI -- they took BERT (110M parameters), pre-trained it further on Reuters financial news, "
+         "then fine-tuned on the Financial PhraseBank dataset. The PhraseBank has 4,840 sentences labeled by 16 financial "
+         "experts. This is high-quality, expert-annotated training data.\n\n"
+         "FinQA-7B is a community contribution -- someone took Meta's Llama2-7B and fine-tuned it using QLoRA on the FinQA "
+         "dataset from IBM Research. The FinQA dataset is remarkable: 8,281 question-answer pairs extracted from real SEC "
+         "filings, each with step-by-step reasoning programs.\n\n"
+         "Note the training data sizes: 4,840 sentences for FinBERT and 8,281 Q&A pairs for FinQA. "
+         "Fine-tuning doesn't require millions of examples -- thousands of high-quality examples can be transformative."),
+
+    13: ("Our Models: Spam Detection",
+         "DistilBERT is 40% smaller and 60% faster than BERT, while retaining 97% of its language understanding. "
+         "This makes it ideal for high-throughput tasks like email filtering.\n\n"
+         "The key insight: fine-tuning teaches the model PATTERNS, not just keywords. A fine-tuned spam detector learns "
+         "that 'urgency + verification request + deadline' is a phishing pattern, even if the individual words are benign.\n\n"
+         "RAG struggles here because similar-looking emails can be either spam or legitimate. A pharmacy notification "
+         "and a pharmaceutical spam email look similar in embedding space but have completely different intent."),
+
+    14: ("Training Data Examples",
+         "Let's look at what the model actually learns from.\n\n"
+         "Each FinQA training example has three parts: a financial data table with real numbers, a question that requires "
+         "multi-step reasoning, and a 'program' that shows the exact calculation steps.\n\n"
+         "For example: 'What is the total revenue growth rate?' requires finding revenue in two different years from the table, "
+         "computing the difference, and dividing by the base year. The model learns this reasoning pattern, not just the answer.\n\n"
+         "This is why fine-tuning outperforms RAG on numerical tasks: RAG can retrieve the table, but the model still "
+         "needs to know HOW to compute the answer. Fine-tuning teaches the 'how'."),
+
+    15: ("Head-to-Head Comparison",
+         "This side-by-side comparison crystallizes the core difference.\n\n"
+         "RAG excels when the task is knowledge-intensive: 'What was Apple's revenue last quarter?' Just retrieve the right "
+         "document and the answer is there. The model doesn't need special skills.\n\n"
+         "Fine-tuning excels when the task requires reasoning: 'Calculate the compound annual growth rate from this table.' "
+         "No amount of document retrieval helps if the model can't do multi-step arithmetic.\n\n"
+         "The hybrid approach combines both: use fine-tuning for the reasoning skills and RAG for the latest data. "
+         "In our benchmarks, the hybrid approach consistently achieves the highest or equal-best accuracy."),
+
+    16: ("When RAG Falls Short",
+         "These are real examples from our benchmarks where RAG failed.\n\n"
+         "Example 1: Financial sentiment of 'The company announced restructuring charges.' RAG retrieves similar sentences "
+         "but the base model still classifies it as neutral. FinBERT knows this is negative in financial context.\n\n"
+         "Example 2: 'Calculate the efficiency ratio from this data.' RAG retrieves the formula definition, "
+         "but the base model still computes it incorrectly. FinQA-7B gets it right because it's practiced thousands "
+         "of similar calculations during training.\n\n"
+         "The pattern: RAG fails when the bottleneck is SKILL, not INFORMATION."),
+
+    17: ("Decision Framework",
+         "This is your practical takeaway. Two questions determine the right approach.\n\n"
+         "Question 1: Does the task require NEW REASONING SKILLS? If yes, you need fine-tuning. "
+         "If no, the model already knows how to do the task and you just need to give it the right information.\n\n"
+         "Question 2: Does it need FRESH or DYNAMIC data? If yes, you need RAG for the knowledge layer.\n\n"
+         "Both yes? Hybrid. Just skills? Fine-tune. Just knowledge? RAG. Neither? Start with prompt engineering.\n\n"
+         "Most real-world production systems end up as hybrids -- the question is which component carries more weight."),
+}
+
+# Notes for fine-tuning tools, RAG tools, and ecosystem slides
+SLIDE_NOTES_TOOLS = {
+    18: ("Fine-Tuning Tools",
+         "The ecosystem has matured dramatically in the last 2 years.\n\n"
+         "HuggingFace is the de facto hub -- 500K+ models, PEFT/LoRA libraries, and the Trainer API. "
+         "Most fine-tuning projects start here.\n\n"
+         "Unsloth deserves special mention -- they've achieved 2x training speed and 60% memory reduction through "
+         "custom CUDA kernels. This means you can fine-tune a 7B model on a single consumer GPU.\n\n"
+         "For enterprises: AWS SageMaker and Bedrock Custom Models provide managed fine-tuning. "
+         "You upload data, they handle the infrastructure. More expensive but zero DevOps overhead."),
+
+    19: ("Fine-Tune: Local Setup",
+         "This slide shows actual code for local fine-tuning with Unsloth and QLoRA.\n\n"
+         "The key parameters: rank=16 (adapter size), target_modules include attention AND MLP layers "
+         "(not just attention, which is a common mistake). Learning rate of 2e-4 with cosine scheduling.\n\n"
+         "With QLoRA on a single NVIDIA GPU with 24GB VRAM, you can fine-tune a 7B model in about 4-6 hours "
+         "on 8K training examples. Total cost: electricity.\n\n"
+         "For those without local GPUs: Google Colab Pro ($10/month) gives you access to A100 GPUs sufficient for this."),
+
+    20: ("Fine-Tune: AWS",
+         "AWS offers two paths: SageMaker for full control, Bedrock for managed simplicity.\n\n"
+         "SageMaker: bring your own training script, choose instance types (ml.g5.2xlarge is the sweet spot for 7B models), "
+         "and manage the full ML lifecycle. More work but more control.\n\n"
+         "Bedrock Custom Models: upload your JSONL, click 'train', and get a private endpoint. "
+         "They handle hyperparameters, infrastructure, and scaling. Best for teams that want results without ML engineering.\n\n"
+         "Cost comparison: Bedrock charges per training token (~$0.008/1K tokens). For 8K examples, "
+         "that's roughly $50-100 for a fine-tuning job. SageMaker is pay-per-hour for the GPU instance."),
+
+    21: ("RAG Tools",
+         "RAG infrastructure has three layers: embedding models, vector databases, and orchestration frameworks.\n\n"
+         "Embeddings: all-MiniLM-L6-v2 is our choice -- only 22M parameters but excellent performance. "
+         "For production, consider OpenAI's text-embedding-3-small or Cohere's embed-v3.\n\n"
+         "Vector DBs: ChromaDB (what we use) is great for prototyping -- in-memory, zero config. "
+         "For production: Pinecone (managed), Weaviate (open-source), or pgvector (if you're already on PostgreSQL).\n\n"
+         "LangChain and LlamaIndex handle the orchestration -- chunking, retrieval, prompt assembly, response generation."),
+
+    22: ("RAG: Local Setup",
+         "This code is from our actual demo application.\n\n"
+         "Key design decisions: chunk size of 300 words with 50-word overlap. The overlap ensures that sentences "
+         "straddling chunk boundaries aren't lost. Top-K=3 retrieval -- more chunks means more context but also "
+         "more noise and higher latency.\n\n"
+         "ChromaDB creates an in-memory collection and persists to disk. On restart, it reloads from the persisted data -- "
+         "no need to re-embed all documents.\n\n"
+         "Total setup time: about 10 minutes from scratch. That's the beauty of RAG -- fast to prototype."),
+
+    23: ("RAG: AWS",
+         "AWS Bedrock Knowledge Bases is the managed RAG solution.\n\n"
+         "You point it at an S3 bucket with your documents, choose an embedding model, and it handles chunking, "
+         "embedding, and storage in OpenSearch Serverless. No infrastructure to manage.\n\n"
+         "The trade-off: less control over chunking strategy, retrieval logic, and re-ranking. "
+         "For most enterprise use cases, the convenience outweighs the customization loss."),
+
+    24: ("Data & Evaluation Tools",
+         "Data quality is the single biggest factor in fine-tuning success.\n\n"
+         "Argilla and Label Studio are open-source annotation platforms. For financial data, you need domain experts "
+         "annotating -- not just anyone. The Financial PhraseBank that trained FinBERT used 16 financial professionals.\n\n"
+         "For evaluation: don't rely on a single metric. We use accuracy, F1 score, latency, cost, and LLM-as-Judge. "
+         "Different metrics tell different stories -- a model with 90% accuracy but 10-second latency is useless for "
+         "real-time applications."),
+
+    25: ("Real-World Use Cases",
+         "These are production use cases where the right approach matters.\n\n"
+         "Customer support: RAG is ideal. Questions are about YOUR products, and the knowledge base changes frequently. "
+         "No need to retrain the model.\n\n"
+         "Medical diagnosis support: Fine-tuning is critical. The model needs to understand clinical reasoning patterns, "
+         "not just retrieve medical textbooks.\n\n"
+         "Legal document analysis: Hybrid. Fine-tune for legal reasoning patterns, RAG for case law lookups.\n\n"
+         "The pattern: if the domain has unique reasoning patterns, fine-tune. If it's mostly knowledge lookup, RAG."),
+
+    26: ("The Hybrid Approach",
+         "This is our architecture diagram for the hybrid system.\n\n"
+         "The user's question and financial table go to both the embedding model (for retrieval) and directly to the "
+         "fine-tuned model. Retrieved documents are added as additional context.\n\n"
+         "The fine-tuned model (FinQA-7B) brings the reasoning skills. The RAG component brings fresh context "
+         "and supporting evidence. Together, you get domain reasoning PLUS verifiable sources.\n\n"
+         "In our benchmarks, the hybrid approach matches or beats every other approach across all four experiments."),
+
+    27: ("Cost & ROI",
+         "Let's be practical about costs.\n\n"
+         "Fine-tuning has a higher upfront cost: training data preparation, compute for training, evaluation. "
+         "But per-query cost is lower -- no retrieval step, fewer tokens, faster inference.\n\n"
+         "RAG has a lower upfront cost: set up a vector DB, ingest documents, start querying. "
+         "But per-query cost is higher -- embedding, retrieval, and larger prompts.\n\n"
+         "The crossover point: at roughly 10K-50K queries per month, fine-tuning becomes cheaper than RAG. "
+         "Below that, RAG's lower upfront cost wins.\n\n"
+         "The real ROI question: what's the cost of wrong answers? In regulated industries, "
+         "one compliance violation can cost more than a year of fine-tuning compute."),
+
+    28: ("Key Takeaways",
+         "Three things to remember from this presentation.\n\n"
+         "1. Fine-tuning teaches SKILLS. It changes what the model CAN DO. Use it when the base model lacks "
+         "the reasoning capabilities your task requires.\n\n"
+         "2. RAG provides INFORMATION. It changes what the model KNOWS at query time. Use it when the model "
+         "already has the right skills but needs access to specific or current data.\n\n"
+         "3. Hybrid combines both. For most serious production systems, you want a fine-tuned model augmented "
+         "with RAG for dynamic knowledge. This is the architecture that consistently wins in our benchmarks."),
+}
+
+# Notes for benchmark slides
+SLIDE_NOTES_BENCHMARK = {
+    "section_divider": (
+        "Now let's look at the evidence. Everything from here on is based on real experiments we ran -- "
+        "no synthetic data, no simulated results. Each benchmark compares the SAME architecture with different approaches. "
+        "The only variable is the method: base model, fine-tuned, RAG, or hybrid."
+    ),
+    "overview": (
+        "Four controlled experiments, each using a different model architecture.\n\n"
+        "Experiment 1: BERT-base (110M params) on financial sentiment classification.\n"
+        "Experiment 2: Llama2-7B (7B params) on numerical reasoning from financial tables.\n"
+        "Experiment 3: Llama2-7B on financial ratio calculation (more complex multi-step problems).\n"
+        "Experiment 4: DistilBERT (66M params) on spam/phishing email detection.\n"
+        "Experiment 5: Model size comparison -- DistilBERT (66M) vs GPT-4o-mini (~8B) on spam detection.\n\n"
+        "The methodology is critical: same architecture, same test cases, same evaluation criteria. "
+        "This isolates the impact of the approach from confounding variables like model size."
+    ),
+    "accuracy_latency": (
+        "Pay attention to the accuracy gaps between approaches.\n\n"
+        "In every experiment, the fine-tuned model significantly outperforms the base model. "
+        "RAG improves over base but doesn't match fine-tuning. "
+        "The hybrid approach typically matches or slightly exceeds the fine-tuned model alone.\n\n"
+        "The latency chart tells the cost story: RAG consistently adds 200-600ms for the retrieval step. "
+        "At scale, this compounds. 1,000 queries per minute with 400ms extra latency means "
+        "400 additional seconds of compute time per minute."
+    ),
+    "token_cost": (
+        "Token consumption directly drives API costs.\n\n"
+        "RAG uses significantly more tokens because retrieved document chunks are prepended to the prompt. "
+        "A typical RAG query might use 3-5x more input tokens than a direct fine-tuned inference.\n\n"
+        "For the cost/1K queries metric: this assumes market pricing for API-based models. "
+        "Self-hosted fine-tuned models have near-zero marginal cost (just electricity). "
+        "This is a massive advantage at scale."
+    ),
+    "quality_metrics": (
+        "F1 score provides a more nuanced view than accuracy alone, especially for imbalanced classes.\n\n"
+        "High accuracy with low F1 means the model is biased toward the majority class. "
+        "A good model needs both high precision (few false positives) and high recall (few false negatives).\n\n"
+        "For numerical tasks, MAPE (Mean Absolute Percentage Error) measures how close the predicted "
+        "numbers are to the expected values. A model might get the direction right but be off by 50%."
+    ),
+    "category": (
+        "The category breakdown reveals WHERE each approach wins and loses.\n\n"
+        "Look for categories where fine-tuning dramatically outperforms RAG -- these are the 'skill gaps' "
+        "that RAG cannot address. Conversely, categories where RAG matches fine-tuning are the knowledge-intensive tasks.\n\n"
+        "Domain jargon is a classic fine-tuning win: the model learns that financial terms like "
+        "'headwind', 'runway', and 'restructuring' carry different sentiment than their everyday usage."
+    ),
+    "per_example": (
+        "Individual examples help build intuition for model behavior.\n\n"
+        "Look for patterns in the failures: does the base model consistently fail on the same types of questions? "
+        "Does RAG fail when the retrieved documents are misleading or off-topic?\n\n"
+        "The [Y/N] markers show correct/incorrect. Count the patterns -- where does each approach struggle?"
+    ),
+}
+
+# Notes specific to Model Family slides
+SLIDE_NOTES_MODEL_FAMILY = {
+    "overview": (
+        "This experiment asks a fundamental question: if fine-tuning teaches skills, does a bigger model learn them better?\n\n"
+        "We compare two models BOTH fine-tuned on the same spam detection task with the same training data. "
+        "DistilBERT has 66 million parameters. GPT-4o-mini has approximately 8 billion -- 121 times larger.\n\n"
+        "DistilBERT runs locally with near-zero cost. GPT-4o-mini requires an API call at $0.30 per million input tokens.\n\n"
+        "The question is whether that 121x size difference and higher cost translate to proportionally better performance."
+    ),
+    "cost_findings": (
+        "The results are striking.\n\n"
+        "On basic test cases, GPT-4o-mini edges out DistilBERT by about 5 percentage points. "
+        "But DistilBERT is running at 1/23rd the latency and near-zero cost.\n\n"
+        "On adversarial cases, the gap widens -- the larger model is more robust to edge cases. "
+        "This makes sense: more parameters give more capacity to handle unusual inputs.\n\n"
+        "The diminishing returns insight: going from 66M to 8B parameters (121x) yields only a modest accuracy gain. "
+        "For many production use cases, the smaller, faster, cheaper model is the better choice.\n\n"
+        "This has profound implications for deployment: a $0.005/1K query model achieving 95% accuracy "
+        "often beats a $0.02/1K query model achieving 100% accuracy."
+    ),
+    "judge": (
+        "The LLM-as-Judge evaluation adds a qualitative dimension to our quantitative benchmarks.\n\n"
+        "We used GPT-4o as an independent judge to score each model's predictions on three dimensions: "
+        "correctness (did it get the right answer?), reasoning quality (does the prediction show domain understanding?), "
+        "and faithfulness (is the classification based on actual email content?).\n\n"
+        "On basic cases, both models score near-perfect -- the differences only emerge on adversarial cases "
+        "where the emails are deliberately designed to confuse classifiers.\n\n"
+        "The judge scores align with the accuracy metrics but provide richer insights: a model can be incorrect "
+        "but still show reasonable reasoning, or correct but for the wrong reasons."
+    ),
+}
+
+# Notes for insights and summary slides
+SLIDE_NOTES_SUMMARY = {
+    "insights": (
+        "Let's step back and look at the big picture across all experiments.\n\n"
+        "The data consistently tells us: fine-tuning excels at REASONING, COMPUTATION, and PATTERN RECOGNITION. "
+        "These are skill-based tasks where the model needs to learn new capabilities.\n\n"
+        "RAG excels at KNOWLEDGE RETRIEVAL -- tasks where the answer is in a document and the model just needs "
+        "to find and present it.\n\n"
+        "The hybrid approach consistently achieves the highest accuracy because it combines learned skills "
+        "with access to fresh information. This is the architecture pattern for production systems."
+    ),
+    "striking_examples": (
+        "These examples are cherry-picked to illustrate the clearest wins for each approach.\n\n"
+        "Fine-tuning wins: cases where domain-specific reasoning is required. "
+        "Financial jargon, multi-step calculations, nuanced classification.\n\n"
+        "RAG wins: cases where specific factual information is needed that the model doesn't have in its weights. "
+        "Current data, specific document references, evolving knowledge.\n\n"
+        "Hybrid wins: cases that need BOTH -- domain reasoning skills applied to specific current data."
+    ),
+    "summary_table": (
+        "This is the slide to photograph if you remember nothing else.\n\n"
+        "The accuracy table shows fine-tuning winning across every experiment. The cost table shows "
+        "the trade-off: RAG uses more tokens and costs more per query.\n\n"
+        "Five key conclusions, backed by our data:\n"
+        "1. Fine-tuning consistently outperforms base models.\n"
+        "2. RAG improves over base but can't match fine-tuning for reasoning.\n"
+        "3. Hybrid achieves the best results.\n"
+        "4. Spam detection is a great fine-tuning use case -- learned patterns beat retrieval.\n"
+        "5. All comparisons are controlled -- same architecture, different approach.\n\n"
+        "The implication for your projects: if accuracy matters and you have training data, fine-tune. "
+        "If you need dynamic knowledge, add RAG. For production, do both."
+    ),
+    "thank_you": (
+        "Thank you for your attention. Let's open the floor for questions.\n\n"
+        "For the live demo, we can run any of the models in real-time and show you the differences side by side. "
+        "The Streamlit application is running at localhost:8501 if you want to try it yourself.\n\n"
+        "All code, benchmarks, and the presentation itself are available in the repository. "
+        "The benchmark results are reproducible -- you can run them yourself with docker compose up.\n\n"
+        "Key takeaway: fine-tuning teaches SKILLS, RAG provides INFORMATION. "
+        "The best systems combine both. Now go build something great."
+    ),
+}
+
+
+# Apply notes to all slides
+actual_total = slide_num[0]
+slides_list = list(prs.slides)
+
+# Helper to safely add notes to a slide by index
+def _apply_notes(slide_idx, title, text):
+    """Add notes to slide at 0-based index."""
+    if slide_idx < len(slides_list):
+        slide = slides_list[slide_idx]
+        ns = slide.notes_slide
+        tf = ns.notes_text_frame
+        tf.text = text
+        all_slide_notes.append((slide_idx + 1, title, text))
+
+# Apply intro notes (slides 1-28 map to indices 0-27)
+for idx, (title, text) in SLIDE_NOTES.items():
+    _apply_notes(idx - 1, title, text)
+
+# Apply tools notes (slides 18-28 approximately)
+for idx, (title, text) in SLIDE_NOTES_TOOLS.items():
+    _apply_notes(idx - 1, title, text)
+
+# For the dynamically generated benchmark slides, we apply generic notes
+# based on patterns. We iterate over remaining slides and assign notes by title detection.
+# Since we can't know exact indices for dynamic slides, apply them by scanning titles.
+benchmark_slide_offset = 28  # approximate start of benchmark slides
+
+# Apply benchmark section divider
+_apply_notes(benchmark_slide_offset, "Benchmark Results (Section Divider)",
+             SLIDE_NOTES_BENCHMARK["section_divider"])
+
+# Benchmark overview
+_apply_notes(benchmark_slide_offset + 1, "Benchmark Experiments Overview",
+             SLIDE_NOTES_BENCHMARK["overview"])
+
+# For the 4 benchmark experiments, each generates ~6 slides:
+# accuracy+latency, token+cost, quality, confidence, category, per-example
+exp_start = benchmark_slide_offset + 2
+for exp_idx, exp_name in enumerate([
+    "Sentiment (BERT 110M)", "Numerical (Llama2 7B)",
+    "Financial Ratios (Llama2 7B)", "Spam Detection (DistilBERT 66M)"
+]):
+    base = exp_start + exp_idx * 6
+    _apply_notes(base, f"{exp_name} - Accuracy & Latency",
+                 SLIDE_NOTES_BENCHMARK["accuracy_latency"])
+    _apply_notes(base + 1, f"{exp_name} - Token Usage & Cost",
+                 SLIDE_NOTES_BENCHMARK["token_cost"])
+    _apply_notes(base + 2, f"{exp_name} - Quality Metrics",
+                 SLIDE_NOTES_BENCHMARK["quality_metrics"])
+    _apply_notes(base + 3, f"{exp_name} - Confidence/Extra Metrics",
+                 SLIDE_NOTES_BENCHMARK["category"])
+    _apply_notes(base + 4, f"{exp_name} - Category Breakdown",
+                 SLIDE_NOTES_BENCHMARK["category"])
+    _apply_notes(base + 5, f"{exp_name} - Per-Example Results",
+                 SLIDE_NOTES_BENCHMARK["per_example"])
+
+# Model Family slides (3 slides after the 4 experiments)
+mf_start = exp_start + 4 * 6
+_apply_notes(mf_start, "Model Size Benchmark - Overview",
+             SLIDE_NOTES_MODEL_FAMILY["overview"])
+_apply_notes(mf_start + 1, "Model Size Benchmark - Cost & Findings",
+             SLIDE_NOTES_MODEL_FAMILY["cost_findings"])
+_apply_notes(mf_start + 2, "Model Size Benchmark - LLM-as-Judge",
+             SLIDE_NOTES_MODEL_FAMILY["judge"])
+
+# Summary slides (after model family)
+summary_start = mf_start + 3
+_apply_notes(summary_start, "Benchmark Insights",
+             SLIDE_NOTES_SUMMARY["insights"])
+_apply_notes(summary_start + 1, "Striking Examples",
+             SLIDE_NOTES_SUMMARY["striking_examples"])
+_apply_notes(summary_start + 2, "Summary: All Experiments",
+             SLIDE_NOTES_SUMMARY["summary_table"])
+
+# Thank You (last slide)
+_apply_notes(actual_total - 1, "Thank You",
+             SLIDE_NOTES_SUMMARY["thank_you"])
+
+
+# ---------------------------------------------------------------------------
+# Export notes to markdown
+# ---------------------------------------------------------------------------
+all_slide_notes.sort(key=lambda x: x[0])
+md_lines = ["# Presentation Speaker Notes\n",
+            f"**Total slides:** {actual_total}\n",
+            f"**Generated:** {Path(__file__).name}\n\n",
+            "---\n"]
+for num, title, text in all_slide_notes:
+    md_lines.append(f"\n## Slide {num}: {title}\n")
+    md_lines.append(f"\n{text}\n")
+    md_lines.append("\n---\n")
+
+notes_path = Path(__file__).parent / "presentation_notes.md"
+with open(notes_path, "w") as f:
+    f.writelines(md_lines)
+print(f"Speaker notes saved to: {notes_path}")
+
+
 # ---------------------------------------------------------------------------
 # Save
 # ---------------------------------------------------------------------------
@@ -2383,3 +3132,4 @@ output_path = Path(__file__).parent / "presentation.pptx"
 prs.save(str(output_path))
 print(f"Presentation saved to: {output_path}")
 print(f"Total slides: {actual_total}")
+print(f"Slides with notes: {len(all_slide_notes)}")

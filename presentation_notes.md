@@ -1,5 +1,5 @@
 # Presentation Speaker Notes
-**Total slides:** 58
+**Total slides:** 62
 **Generated:** generate_pptx.py
 
 ---
@@ -634,6 +634,12 @@ The judge scores align with the accuracy metrics but provide richer insights: a 
 
 ---
 
+## Slide 58: RAG Strengths Overview
+
+This benchmark proves that RAG performs dramatically better when test data aligns with the knowledge base. Standard benchmarks showed RAG at 15% on numerical tasks due to data conflicts; here RAG achieves 87% because retrieved data helps rather than hurts.
+
+---
+
 ## Slide 58: Benchmark Insights
 
 Let's step back and look at the big picture across all experiments.
@@ -646,7 +652,54 @@ The hybrid approach consistently achieves the highest accuracy because it combin
 
 ---
 
-## Slide 58: Thank You
+## Slide 59: RAG Advantage Analysis
+
+The category breakdown reveals where RAG provides the most value. Direct retrieval shows the largest gap because base models literally cannot access proprietary document data. Cross-document synthesis benefits most from hybrid because it requires both retrieval and reasoning.
+
+---
+
+## Slide 59: Striking Examples
+
+These examples are cherry-picked to illustrate the clearest wins for each approach.
+
+Fine-tuning wins: cases where domain-specific reasoning is required. Financial jargon, multi-step calculations, nuanced classification.
+
+RAG wins: cases where specific factual information is needed that the model doesn't have in its weights. Current data, specific document references, evolving knowledge.
+
+Hybrid wins: cases that need BOTH -- domain reasoning skills applied to specific current data.
+
+---
+
+## Slide 60: LLM Judge RAG Strengths
+
+The GPT-4o judge confirms that RAG dramatically improves faithfulness scores. This is the primary production value of RAG: it reduces hallucination by grounding model responses in actual documents. The hybrid approach achieves the best overall quality by combining retrieval with reasoning skills.
+
+---
+
+## Slide 60: Summary: All Experiments
+
+This is the slide to photograph if you remember nothing else.
+
+The accuracy table shows fine-tuning winning across every experiment. The cost table shows the trade-off: RAG uses more tokens and costs more per query.
+
+Five key conclusions, backed by our data:
+1. Fine-tuning consistently outperforms base models.
+2. RAG improves over base but can't match fine-tuning for reasoning.
+3. Hybrid achieves the best results.
+4. Spam detection is a great fine-tuning use case -- learned patterns beat retrieval.
+5. All comparisons are controlled -- same architecture, different approach.
+
+The implication for your projects: if accuracy matters and you have training data, fine-tune. If you need dynamic knowledge, add RAG. For production, do both.
+
+---
+
+## Slide 61: RAG Strengths Conclusions
+
+The key takeaway is that RAG and fine-tuning solve fundamentally different problems. RAG provides knowledge (access to documents the model has never seen), while fine-tuning provides skills (domain-specific reasoning). The strongest production systems combine both approaches.
+
+---
+
+## Slide 62: Thank You
 
 Thank you for your attention. Let's open the floor for questions.
 

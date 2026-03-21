@@ -1,0 +1,299 @@
+{
+  "_metadata": {
+    "title": "RAG Strengths Benchmark",
+    "description": "30 test cases designed to evaluate RAG on its structural advantages: factual retrieval, cross-document synthesis, formula application with aligned data, contextual interpretation, and trend analysis. All questions reference Meridian National Bancorp data that exists in the RAG knowledge base.",
+    "design_principle": "Unlike the standard benchmark where test cases provide their own data tables (creating conflicts with RAG-retrieved Meridian data), these test cases ask questions that can ONLY be answered correctly by retrieving information from the RAG knowledge base. This represents the actual production use case for RAG: answering questions about proprietary documents.",
+    "expected_results": {
+      "base_model_without_rag": "Should fail on most questions (data is about a fictional company not in training data)",
+      "fine_tuned_without_rag": "Should fail similarly (fine-tuning teaches skills, not Meridian-specific facts)",
+      "rag_enabled": "Should succeed on most questions (data is in the retrieved documents)",
+      "hybrid": "Should achieve highest accuracy (retrieval provides data, fine-tuning improves reasoning)"
+    }
+  },
+  "direct_retrieval": [
+    {
+      "id": "dr01",
+      "question": "What is Meridian National Bancorp's Common Equity Tier 1 (CET1) capital ratio as of December 31, 2023?",
+      "expected": "13.2%",
+      "source_document": "capital_ratios_2023.txt",
+      "category": "single_fact",
+      "difficulty": "easy",
+      "why_rag_wins": "This is a specific fact about a fictional company. No model can know this without document retrieval."
+    },
+    {
+      "id": "dr02",
+      "question": "What was the net charge-off rate for Meridian's consumer loan portfolio in FY 2023?",
+      "expected": "1.01%",
+      "source_document": "credit_portfolio_2023.txt",
+      "category": "single_fact",
+      "difficulty": "easy",
+      "why_rag_wins": "Specific metric buried within a detailed credit quality review document."
+    },
+    {
+      "id": "dr03",
+      "question": "How many branches did Meridian close during FY 2023, and what is the remaining branch count?",
+      "expected": "187 closures, 3,412 remaining",
+      "source_document": "operating_efficiency_2023.txt",
+      "category": "multi_fact",
+      "difficulty": "easy",
+      "why_rag_wins": "Operational detail not in any model's training data. Requires precise retrieval."
+    },
+    {
+      "id": "dr04",
+      "question": "What was the average 30-year fixed mortgage rate during 2023 according to Meridian's consumer banking report?",
+      "expected": "6.81%",
+      "source_document": "consumer_banking_review.txt",
+      "category": "single_fact",
+      "difficulty": "easy",
+      "why_rag_wins": "Rate figure embedded in context about mortgage origination decline."
+    },
+    {
+      "id": "dr05",
+      "question": "What is the notional value of Meridian's interest rate swap portfolio used to manage duration and convexity risk?",
+      "expected": "$86.4 billion",
+      "source_document": "interest_rate_analysis.txt",
+      "category": "single_fact",
+      "difficulty": "medium",
+      "why_rag_wins": "Highly specific risk management detail. Model must retrieve from the correct paragraph."
+    },
+    {
+      "id": "dr06",
+      "question": "What is the estimated impact on Meridian's net interest income if interest rates decline by 100 basis points?",
+      "expected": "-$2.4 billion (-8.1%)",
+      "source_document": "interest_rate_analysis.txt",
+      "category": "single_fact",
+      "difficulty": "medium",
+      "why_rag_wins": "Specific scenario analysis data. Requires finding the rate sensitivity table."
+    },
+    {
+      "id": "dr07",
+      "question": "What was Meridian's Supplementary Leverage Ratio (SLR) and how does it compare to the G-SIB minimum?",
+      "expected": "SLR was 6.4%, G-SIB minimum is 5.0% (3.0% + 2.0% buffer)",
+      "source_document": "capital_ratios_2023.txt",
+      "category": "multi_fact",
+      "difficulty": "medium",
+      "why_rag_wins": "Requires retrieving both the company ratio and the regulatory threshold from the same document."
+    },
+    {
+      "id": "dr08",
+      "question": "What was the weighted-average FICO score and loan-to-value ratio for Meridian's residential mortgage portfolio?",
+      "expected": "FICO 748, LTV 61.2%",
+      "source_document": "credit_portfolio_2023.txt",
+      "category": "multi_fact",
+      "difficulty": "medium",
+      "why_rag_wins": "Two specific metrics from the same paragraph of a credit quality document."
+    }
+  ],
+  "formula_with_aligned_data": [
+    {
+      "id": "fa01",
+      "question": "Using the efficiency ratio formula (Noninterest Expense / Total Revenue), verify Meridian's reported efficiency ratio for FY 2023. Total noninterest expense was $27.9 billion and total revenue was $48.7 billion.",
+      "expected": "57.29%",
+      "expected_tolerance": 0.01,
+      "source_documents": ["financial_definitions.txt", "operating_efficiency_2023.txt", "bank_annual_report_2023.txt"],
+      "category": "formula_verification",
+      "difficulty": "medium",
+      "why_rag_wins": "RAG provides BOTH the formula definition AND the matching data. No conflict -- the data aligns. The model can verify the calculation: $27.9B / $48.7B = 57.29%, consistent with the reported 57.3%."
+    },
+    {
+      "id": "fa02",
+      "question": "Calculate Meridian's allowance coverage ratio (Allowance for Credit Losses / Nonperforming Loans). The allowance was $14.7 billion and nonperforming assets totaled $6.1 billion.",
+      "expected": "2.41",
+      "expected_tolerance": 0.05,
+      "source_documents": ["financial_definitions.txt", "risk_management_2023.txt"],
+      "category": "formula_application",
+      "difficulty": "medium",
+      "why_rag_wins": "RAG provides the formula from financial_definitions.txt AND the data from risk_management_2023.txt. Both are Meridian's own data -- no conflict. Reported value is 2.42x."
+    },
+    {
+      "id": "fa03",
+      "question": "Calculate Meridian's net interest spread for FY 2023 using: interest-earning asset yield minus total funding cost.",
+      "expected": "2.68%",
+      "expected_tolerance": 0.02,
+      "source_documents": ["interest_rate_analysis.txt", "financial_definitions.txt"],
+      "category": "formula_application",
+      "difficulty": "medium",
+      "why_rag_wins": "RAG retrieves: asset yield = 5.31%, funding cost = 2.63%. Spread = 5.31% - 2.63% = 2.68%. This matches the reported NIM. All data is from Meridian's own documents."
+    },
+    {
+      "id": "fa04",
+      "question": "Calculate the year-over-year percentage change in Meridian's provision for credit losses from FY 2022 to FY 2023.",
+      "expected": "48.72%",
+      "expected_tolerance": 0.05,
+      "source_documents": ["risk_management_2023.txt", "bank_annual_report_2023.txt"],
+      "category": "formula_application",
+      "difficulty": "easy",
+      "why_rag_wins": "RAG retrieves: provision FY2023 = $5.8B, FY2022 = $3.9B. Change = ($5.8B - $3.9B) / $3.9B = 48.72%. Both numbers are from Meridian's own documents."
+    },
+    {
+      "id": "fa05",
+      "question": "What percentage of Meridian's total consolidated revenue comes from the Consumer Banking segment?",
+      "expected": "43.74%",
+      "expected_tolerance": 0.02,
+      "source_documents": ["revenue_segments_2023.txt", "bank_annual_report_2023.txt"],
+      "category": "formula_application",
+      "difficulty": "easy",
+      "why_rag_wins": "RAG retrieves: Consumer revenue = $21.3B, Total revenue = $48.7B. Contribution = $21.3B / $48.7B = 43.74%. Reported as 43.7%."
+    },
+    {
+      "id": "fa06",
+      "question": "Using the ROE formula (Net Income / Average Shareholders' Equity), what was Meridian's return on equity for FY 2023? Net income was $13.4 billion.",
+      "expected": "14.8%",
+      "expected_tolerance": 0.05,
+      "source_documents": ["financial_definitions.txt", "bank_annual_report_2023.txt"],
+      "category": "formula_verification",
+      "difficulty": "medium",
+      "why_rag_wins": "RAG provides the ROE formula AND Meridian's actual ROE = 14.8%. The formula and data align -- RAG reinforces rather than contradicts."
+    }
+  ],
+  "cross_document_synthesis": [
+    {
+      "id": "cd01",
+      "question": "Compare the growth rates of Meridian's three business segments (Consumer Banking, Commercial Banking, Investment Banking) in FY 2023. Which segment grew fastest and which grew slowest?",
+      "expected": "Consumer Banking grew fastest at 9.7%, followed by Commercial Banking at 5.1%, and Investment Banking slowest at 1.6%",
+      "source_documents": ["revenue_segments_2023.txt"],
+      "category": "comparison",
+      "difficulty": "medium",
+      "why_rag_wins": "Requires retrieving and comparing three data points from the same document. No model can know these specific growth rates without retrieval."
+    },
+    {
+      "id": "cd02",
+      "question": "How does Meridian's excess CET1 capital compare to the estimated impact of Basel III endgame? Would the company still exceed requirements after the proposed rules take effect?",
+      "expected": "Excess CET1 is $26.1B (350bps above 9.7% requirement). Basel III endgame would reduce CET1 by 120-150bps. Post-implementation CET1 would be ~11.7-12.0%, still above the 9.7% requirement. Yes, sufficient.",
+      "source_documents": ["capital_ratios_2023.txt", "regulatory_update.txt"],
+      "category": "cross_document",
+      "difficulty": "hard",
+      "why_rag_wins": "Requires synthesizing information from TWO documents: capital ratios (current position) and regulatory update (proposed impact). Neither document alone answers the question."
+    },
+    {
+      "id": "cd03",
+      "question": "What is the relationship between Meridian's provision for credit losses increase and the change in its net charge-off rate? Did reserves grow faster than actual losses?",
+      "expected": "Provision increased 48.7% ($3.9B to $5.8B). Net charge-offs increased 50% ($2.8B to $4.2B). NCOs grew slightly faster than provisions. NCO rate rose from 0.40% to 0.57%.",
+      "source_documents": ["risk_management_2023.txt", "bank_annual_report_2023.txt"],
+      "category": "cross_document",
+      "difficulty": "hard",
+      "why_rag_wins": "Requires retrieving provision data AND charge-off data from different sections/documents, then comparing growth rates."
+    },
+    {
+      "id": "cd04",
+      "question": "Meridian's efficiency ratio improved from 59.1% to 57.3%. Break down whether this was driven more by revenue growth or expense control, using the specific growth rates of each.",
+      "expected": "Revenue grew 6.2% ($45.9B to $48.7B) while expenses grew only 2.8% ($27.1B to $27.9B). Revenue growth was the larger driver -- it outpaced expense growth by 3.4 percentage points.",
+      "source_documents": ["operating_efficiency_2023.txt", "bank_annual_report_2023.txt"],
+      "category": "cross_document",
+      "difficulty": "hard",
+      "why_rag_wins": "Requires combining the efficiency ratio context with the specific revenue and expense figures to decompose the drivers."
+    },
+    {
+      "id": "cd05",
+      "question": "Compare the investment banking segment's performance in M&A advisory versus equity underwriting. Which direction did each move and why?",
+      "expected": "M&A advisory revenue fell 7.9% ($2.3B to $2.1B) due to 12.4% decline in global M&A deal volume. Equity underwriting rose 14.3% ($0.8B to $0.9B) as IPO markets recovered in H2. They moved in opposite directions.",
+      "source_documents": ["investment_banking_review.txt"],
+      "category": "within_document",
+      "difficulty": "medium",
+      "why_rag_wins": "Requires extracting multiple data points from the same document and providing directional analysis with causal explanation."
+    },
+    {
+      "id": "cd06",
+      "question": "How does Meridian's digital banking adoption trend relate to its branch closure strategy? Provide the specific metrics.",
+      "expected": "Digital transactions: 67.8% to 72.3% of all consumer transactions (+4.5pp). Digital users: 39.0M to 41.8M (+7.2%). Branches: 187 closures, 3,412 remaining. Digital growth enables physical footprint reduction.",
+      "source_documents": ["consumer_banking_review.txt", "operating_efficiency_2023.txt"],
+      "category": "cross_document",
+      "difficulty": "hard",
+      "why_rag_wins": "Requires connecting digital adoption metrics from consumer banking review with operational efficiency data about branch closures."
+    },
+    {
+      "id": "cd07",
+      "question": "Across all of Meridian's loan categories (commercial, consumer, mortgage), which had the highest net charge-off rate in FY 2023 and which had the lowest?",
+      "expected": "Consumer loans had the highest NCO rate at 1.01% (within consumer: credit cards at 2.94%). Residential mortgages had the lowest at 0.40%. Commercial was in between at 0.41%.",
+      "source_documents": ["credit_portfolio_2023.txt"],
+      "category": "comparison",
+      "difficulty": "medium",
+      "why_rag_wins": "Requires extracting and comparing charge-off rates across three portfolio segments from the credit quality document."
+    },
+    {
+      "id": "cd08",
+      "question": "What is the total amount Meridian returned to shareholders in FY 2023, and how is it split between dividends and buybacks? What is the payout ratio relative to net income?",
+      "expected": "Total returns: $9.7B. Dividends: $5.2B, Buybacks: $4.5B. Payout ratio: $9.7B / $13.4B = 72.4% of net income.",
+      "source_documents": ["bank_annual_report_2023.txt"],
+      "category": "multi_fact_calculation",
+      "difficulty": "medium",
+      "why_rag_wins": "Requires retrieving shareholder return data and net income, then computing a ratio. All data is from Meridian's actual filings."
+    }
+  ],
+  "contextual_interpretation": [
+    {
+      "id": "ci01",
+      "question": "Is Meridian asset-sensitive or liability-sensitive to interest rates? What evidence from the documents supports this?",
+      "expected": "Asset-sensitive. Evidence: (1) $328B floating-rate loans + $142B floating-rate securities repricing within 12 months, (2) NII increases when rates rise (+$1.8B per +100bps), (3) NII decreases when rates fall (-$2.4B per -100bps), (4) company described as 'modestly asset-sensitive'.",
+      "source_documents": ["interest_rate_analysis.txt"],
+      "category": "interpretation",
+      "difficulty": "hard",
+      "why_rag_wins": "Requires understanding rate sensitivity from document narrative and data. A model without retrieval would need to guess."
+    },
+    {
+      "id": "ci02",
+      "question": "What are the key risks to Meridian's FY 2024 revenue outlook? What assumptions underpin the guidance?",
+      "expected": "Risks: NIM compression of 5-15bps as deposit repricing continues. Assumptions: Fed cuts 75-100bps starting mid-2024, GDP 1.5-2.0%, unemployment 4.2-4.6%, no recession. Revenue guidance: $49.5B-$51.0B (+2-5% YoY).",
+      "source_documents": ["market_outlook_2024.txt"],
+      "category": "interpretation",
+      "difficulty": "hard",
+      "why_rag_wins": "Forward-looking guidance is the most time-sensitive content and the strongest use case for RAG. This information is nowhere in any model's training data."
+    },
+    {
+      "id": "ci03",
+      "question": "Why did Meridian's noninterest revenue decline in FY 2023 despite some positive sub-segments? Identify the offsetting factors.",
+      "expected": "Noninterest revenue fell 1.4% to $19.1B. Negatives: subdued capital markets, lower mortgage banking (-22.6%), M&A advisory down 7.9%. Positives: wealth management fees grew, equity underwriting up 14.3%, FICC trading up 6.3%. The negatives outweighed the positives.",
+      "source_documents": ["bank_annual_report_2023.txt", "investment_banking_review.txt", "consumer_banking_review.txt"],
+      "category": "cross_document_interpretation",
+      "difficulty": "hard",
+      "why_rag_wins": "Requires synthesizing offsetting factors across three different documents to explain a headline number."
+    },
+    {
+      "id": "ci04",
+      "question": "What drove the increase in Meridian's criticized and classified commercial loans, and how significant is the commercial real estate office exposure?",
+      "expected": "Criticized/classified loans increased 22.3% to $18.4B, driven by stress in office and retail CRE sectors. CRE office portfolio is $34.6B with 58.3% weighted-average LTV. CRE loan growth was cautious at 1.8% vs 5.2% C&I growth.",
+      "source_documents": ["credit_portfolio_2023.txt", "risk_management_2023.txt"],
+      "category": "interpretation",
+      "difficulty": "hard",
+      "why_rag_wins": "Requires connecting specific credit quality metrics with sector-level exposure data across two documents."
+    }
+  ],
+  "trend_analysis": [
+    {
+      "id": "ta01",
+      "question": "Track Meridian's net interest margin by quarter in 2023. When did it peak, and what caused the Q4 decline?",
+      "expected": "Q1: 2.58%, Q2: 2.71%, Q3: 2.74%, Q4: 2.67%. Peaked in Q3. Q4 declined due to continued deposit repricing and competitive pressure for commercial deposits.",
+      "source_documents": ["interest_rate_analysis.txt"],
+      "category": "trend",
+      "difficulty": "medium",
+      "why_rag_wins": "Quarterly NIM data requires precise retrieval. The causal explanation is in the document narrative."
+    },
+    {
+      "id": "ta02",
+      "question": "How has Meridian's consumer deposit mix shifted, and what is the impact on funding costs?",
+      "expected": "Noninterest-bearing deposits declined from 31.7% to 26.3% of consumer deposits as customers shifted to CDs and high-yield savings. Average rate on interest-bearing deposits rose 64bps to 2.18%. This deposit migration increases funding costs.",
+      "source_documents": ["consumer_banking_review.txt"],
+      "category": "trend",
+      "difficulty": "medium",
+      "why_rag_wins": "Deposit mix shift is a nuanced operational trend that requires document retrieval to quantify."
+    },
+    {
+      "id": "ta03",
+      "question": "How have Meridian's three capital ratios (CET1, Tier 1, Total Capital) changed from FY 2022 to FY 2023?",
+      "expected": "CET1: 12.8% to 13.2% (+40bps). Tier 1: 14.7% to 15.1% (+40bps). Total Capital: 17.2% to 17.7% (+50bps). All improved YoY.",
+      "source_documents": ["capital_ratios_2023.txt"],
+      "category": "trend",
+      "difficulty": "medium",
+      "why_rag_wins": "Year-over-year comparison of three metrics requires precise extraction from the capital ratios document."
+    },
+    {
+      "id": "ta04",
+      "question": "What is the trajectory of Meridian's cost reduction program? How much has been achieved vs the target, and what are the key initiatives?",
+      "expected": "Multi-year program initiated 2021. Cumulative gross savings: $2.4B achieved against $3.0B target (80% complete) by year-end 2023. Key initiatives: (1) branch rationalization (187 closures in FY2023), (2) back-office automation (3,800 FTE roles eliminated over 2 years), (3) vendor renegotiations ($340M annual savings).",
+      "source_documents": ["operating_efficiency_2023.txt"],
+      "category": "trend",
+      "difficulty": "hard",
+      "why_rag_wins": "Multi-year program tracking with specific milestone data requires precise document retrieval."
+    }
+  ]
+}
