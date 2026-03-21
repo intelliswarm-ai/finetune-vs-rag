@@ -23,24 +23,19 @@ Fine-tuning teaches SKILLS.  RAG provides KNOWLEDGE.
 The best systems combine both.  We prove it.
 ```
 
-<table>
-<tr>
-<td width="50%">
+## What makes this different
 
-### What makes this different
+| | |
+|---|---|
+| **Same architecture** | Base vs fine-tuned use identical architectures -- only weights differ |
+| **4-way comparison** | Every test case runs through Base, Fine-Tuned, RAG, and Hybrid |
+| **253 test cases** | 6 benchmark suites: standard, adversarial, RAG strengths, model family |
+| **LLM-as-Judge** | GPT-4o structured evaluation (correctness, reasoning, faithfulness) |
+| **The Formula Trap** | We discovered why RAG appears to fail -- and proved it's the benchmark, not RAG |
+| **Full presentations** | 39 web slides + 62-slide PowerPoint, auto-generated from benchmark data |
+| **Real cost analysis** | Tokens, latency, and $/1K queries measured for every approach |
 
-- **Same architecture** for base vs fine-tuned -- only weights differ
-- **4-way comparison** on every test case: Base / Fine-Tuned / RAG / Hybrid
-- **253 test cases** across 6 benchmark suites (standard + adversarial + RAG strengths)
-- **LLM-as-Judge** (GPT-4o) evaluation with structured scoring
-- **The Formula Trap discovery** -- why RAG appears to fail on numerical tasks and what actually happens
-- **39-slide presentation** + 62-slide PowerPoint, both auto-generated from benchmark data
-- **Real cost analysis** -- tokens, latency, $/1K queries for every approach
-
-</td>
-<td width="50%">
-
-### The headline numbers
+## The headline numbers
 
 | Finding | Evidence |
 |---------|----------|
@@ -50,10 +45,6 @@ The best systems combine both.  We prove it.
 | Hybrid wins overall | 93.3% on RAG strengths, 75% on sentiment |
 | RAG reduces hallucination | Faithfulness: 3.8/5 vs base 1.9/5 (GPT-4o judge) |
 | Model size isn't everything | 66M DistilBERT matches ~8B GPT-4o-mini on spam |
-
-</td>
-</tr>
-</table>
 
 ## The Discovery: RAG Was Never Broken
 
