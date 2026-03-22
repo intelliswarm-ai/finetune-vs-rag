@@ -212,7 +212,7 @@ Every dashboard supports both **live execution** (run in the UI with progress ba
 ```
 finetune-vs-rag/
 ├── app/
-│   ├── Finetune_vs_RAG.py              # Landing page
+│   ├── finetune_vs_rag.py              # Landing page
 │   ├── demo_utils.py                   # All model inference (7 models, 4 approaches)
 │   ├── rag_engine.py                   # ChromaDB + sentence-transformers pipeline
 │   ├── benchmark.py                    # Standard benchmark runner

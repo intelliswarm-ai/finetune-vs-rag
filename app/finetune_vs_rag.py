@@ -205,7 +205,7 @@ with st.sidebar:
 
     **Pages:**
     """)
-    st.page_link("Finetune_vs_RAG.py", label="Home")
+    st.page_link("finetune_vs_rag.py", label="Home")
     st.page_link("pages/0_Presentation.py", label="Presentation Slides")
     st.page_link("pages/1_Numerical_Reasoning.py", label="Numerical Reasoning")
     st.page_link("pages/2_Live_Query_-_Numerical_Reasoning.py", label="  Live Query - Numerical")
