@@ -1773,8 +1773,424 @@ def slide_key_takeaways():
         """, unsafe_allow_html=True)
 
 
+def slide_architecture_overview():
+    """High-Level Architecture: 4-way comparison design"""
+    st.markdown('<p class="slide-title">High-Level Architecture</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">4-way comparison: same architecture, different strategy</p>', unsafe_allow_html=True)
+
+    render_mermaid("""
+    graph TB
+        subgraph INPUT["Test Case Input"]
+            Q["Financial Question + Data Table"]
+        end
+
+        subgraph APPROACHES["4 Approaches — Same Architecture, Different Strategy"]
+            direction LR
+            BASE["Base Model<br/><i>No training, no retrieval</i><br/>BERT 110M / Llama2 7B"]
+            FT["Fine-Tuned Model<br/><i>Updated weights</i><br/>FinBERT / FinQA-7B"]
+            RAG["RAG<br/><i>Base + retrieved docs</i><br/>ChromaDB Top-3 chunks"]
+            HYB["Hybrid<br/><i>Fine-tuned + retrieved docs</i><br/>Best of both"]
+        end
+
+        subgraph EVAL["Evaluation — 253 Test Cases"]
+            ACC["Accuracy / F1 / MAPE"]
+            JUDGE["GPT-4o LLM Judge<br/>Correctness · Reasoning · Faithfulness"]
+            COST["Latency · Tokens · $/1K queries"]
+        end
+
+        Q --> BASE & FT & RAG & HYB
+        BASE & FT & RAG & HYB --> ACC & JUDGE & COST
+
+        style INPUT fill:#1a237e,stroke:#5c6bc0,color:#fff
+        style APPROACHES fill:#0d1440,stroke:#2a4a8a,color:#fff
+        style EVAL fill:#004d40,stroke:#26a69a,color:#fff
+        style BASE fill:#37474f,stroke:#78909c,color:#fff
+        style FT fill:#1b5e20,stroke:#66bb6a,color:#fff
+        style RAG fill:#01579b,stroke:#29b6f6,color:#fff
+        style HYB fill:#4a148c,stroke:#ab47bc,color:#fff
+    """, height=550)
+
+
+def slide_formula_trap_diagram():
+    """The Formula Trap: data alignment vs conflict"""
+    st.markdown('<p class="slide-title">The Formula Trap: Why RAG Appears to Fail</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">Same model, same RAG pipeline — +71.4pp swing from data alignment alone</p>', unsafe_allow_html=True)
+
+    render_mermaid("""
+    graph LR
+        subgraph STANDARD["Standard Benchmark — RAG Accuracy: 15%"]
+            direction TB
+            S1["Test Table<br/><b>Revenue = $25.9B</b>"]
+            S2["RAG Retrieves<br/><b>Meridian Revenue = $48.7B</b>"]
+            S3["Model sees<br/><b>TWO conflicting numbers</b>"]
+            S4["Confused → Wrong Answer"]
+            S1 --> S3
+            S2 --> S3
+            S3 --> S4
+        end
+
+        subgraph ALIGNED["RAG Strengths — RAG Accuracy: 86.7%"]
+            direction TB
+            A1["Question asks about<br/><b>Meridian's revenue</b>"]
+            A2["RAG Retrieves<br/><b>Meridian Revenue = $48.7B</b>"]
+            A3["Data <b>aligns</b><br/>No conflict"]
+            A4["Correct Answer"]
+            A1 --> A3
+            A2 --> A3
+            A3 --> A4
+        end
+
+        S4 -. "+71.4pp<br/>same model<br/>same RAG" .-> A4
+
+        style STANDARD fill:#b71c1c,stroke:#e53935,color:#fff
+        style ALIGNED fill:#1b5e20,stroke:#66bb6a,color:#fff
+        style S4 fill:#c62828,stroke:#e53935,color:#fff
+        style A4 fill:#2e7d32,stroke:#66bb6a,color:#fff
+    """, height=450)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+        <div class="red-box">
+        <strong>The Problem:</strong> Most benchmarks provide test data that <i>conflicts</i>
+        with RAG-retrieved data. The model receives two competing sets of numbers and gets confused.
+        This is a benchmark design flaw, not a RAG limitation.
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div class="green-box">
+        <strong>The Fix:</strong> When questions ask about data actually <i>in</i> the knowledge
+        base (the real-world production case), RAG jumps from 15% to <b>86.7%</b> and
+        Hybrid reaches <b>93.3%</b>.
+        </div>
+        """, unsafe_allow_html=True)
+
+
+def slide_benchmark_methodology_diagram():
+    """Benchmark Methodology: 6 suites, scoring, and LLM Judge"""
+    st.markdown('<p class="slide-title">Benchmark Methodology</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">6 benchmark suites, 253 test cases, 3-axis LLM-as-Judge evaluation</p>', unsafe_allow_html=True)
+
+    render_mermaid("""
+    graph TD
+        subgraph SUITES["6 Benchmark Suites — 253 Test Cases"]
+            direction TB
+            STD["Standard<br/><b>53 cases</b><br/>Sentiment · Numerical<br/>Ratios · Spam"]
+            ADV["Adversarial<br/><b>120 cases</b><br/>Noisy Retrieval<br/>Knowledge Conflict · OOD"]
+            RS["RAG Strengths<br/><b>30 cases</b><br/>Direct Retrieval<br/>Cross-Doc · Trends"]
+            MF["Model Family<br/><b>50 cases</b><br/>66M vs ~8B"]
+        end
+
+        subgraph SCORING["Scoring Methods"]
+            direction TB
+            CLS["Classification<br/>Exact label match"]
+            NUM["Numerical<br/>Within 5% tolerance"]
+            KW["Keyword + Numeric<br/>Hybrid matching"]
+        end
+
+        subgraph JUDGE["LLM-as-Judge — GPT-4o"]
+            direction LR
+            COR["Correctness<br/><b>50% weight</b>"]
+            REA["Reasoning<br/><b>30% weight</b>"]
+            FAI["Faithfulness<br/><b>20% weight</b>"]
+        end
+
+        STD --> CLS & NUM
+        RS --> KW
+        RS & ADV --> JUDGE
+        COR & REA & FAI --> OVR["Overall = C×0.5 + R×0.3 + F×0.2"]
+
+        style SUITES fill:#1a237e,stroke:#5c6bc0,color:#fff
+        style SCORING fill:#004d40,stroke:#26a69a,color:#fff
+        style JUDGE fill:#e65100,stroke:#ff9800,color:#fff
+        style OVR fill:#bf360c,stroke:#ff6e40,color:#fff
+        style STD fill:#283593,stroke:#5c6bc0,color:#fff
+        style ADV fill:#c62828,stroke:#e53935,color:#fff
+        style RS fill:#2e7d32,stroke:#66bb6a,color:#fff
+        style MF fill:#6a1b9a,stroke:#ab47bc,color:#fff
+    """, height=550)
+
+
+def slide_adversarial_overview():
+    """Adversarial Stress Test overview diagram"""
+    st.markdown('<p class="slide-title">Adversarial Stress Test: 120 Cases</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">3 attack vectors × 4 task types — where models break</p>', unsafe_allow_html=True)
+
+    render_mermaid("""
+    graph TD
+        subgraph ATTACKS["3 Attack Vectors"]
+            direction LR
+            NR["Noisy Retrieval<br/><i>Irrelevant docs injected</i>"]
+            KC["Knowledge Conflict<br/><i>Contradictory signals</i>"]
+            OOD["Out of Distribution<br/><i>ESG · Crypto · DeFi</i>"]
+        end
+
+        subgraph SENTIMENT["Adversarial Sentiment — 30 cases"]
+            AS_W["Winner: <b>RAG 3.23/5</b><br/>Faithfulness anchors it"]
+        end
+
+        subgraph SPAM["Adversarial Spam — 30 cases"]
+            SP_W["Winner: <b>Hybrid 4.10/5</b><br/>Best adversarial score in project"]
+        end
+
+        subgraph NUMERICAL["Adversarial Numerical — 30 cases"]
+            NU_W["All collapse — <b>Hybrid worst: 2.06/5</b><br/>More context = more confusion"]
+        end
+
+        subgraph RATIOS["Adversarial Ratios — 30 cases"]
+            FR_W["All fail — <b>Hybrid lowest: 1.86/5</b><br/>Lowest score in entire benchmark"]
+        end
+
+        NR & KC & OOD --> SENTIMENT & SPAM & NUMERICAL & RATIOS
+
+        style ATTACKS fill:#c62828,stroke:#e53935,color:#fff
+        style SENTIMENT fill:#01579b,stroke:#29b6f6,color:#fff
+        style SPAM fill:#2e7d32,stroke:#66bb6a,color:#fff
+        style NUMERICAL fill:#e65100,stroke:#ff9800,color:#fff
+        style RATIOS fill:#b71c1c,stroke:#e53935,color:#fff
+    """, height=520)
+
+    st.markdown("""
+    <div class="orange-box">
+    <strong>Key Insight:</strong> On reasoning tasks (numerical, ratios), adding more context through RAG
+    <b>degrades</b> performance — Hybrid scores worst (1.86/5). But on classification tasks (sentiment, spam),
+    fine-tuning and RAG provide complementary robustness. <b>Context helps classification but hurts computation.</b>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def slide_knowledge_vs_skill():
+    """Knowledge vs Skill: the fundamental asymmetry"""
+    st.markdown('<p class="slide-title">The Fundamental Asymmetry: Knowledge vs Skill</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">What each approach actually provides — measured across 253 experiments</p>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        render_mermaid("""
+        graph TD
+            subgraph SKILL["SKILL — Learned Reasoning"]
+                direction TB
+                FT_S["Fine-Tuning provides:<br/><b>Math · Jargon · Classification</b><br/>FinBERT: 70% sentiment<br/>FinQA-7B: 61% numerical"]
+                RAG_S["RAG provides:<br/><b>Nothing</b><br/>15% → 15.3% on math<br/>Cannot teach computation"]
+            end
+
+            subgraph KNOW["KNOWLEDGE — Factual Data"]
+                direction TB
+                RAG_K["RAG provides:<br/><b>Documents · Facts · Citations</b><br/>86.7% on factual retrieval<br/>Faithfulness: 3.8/5"]
+                FT_K["Fine-Tuning provides:<br/><b>Nothing new</b><br/>0% on direct retrieval<br/>No access to unseen docs"]
+            end
+
+            HYB["<b>HYBRID: BOTH</b><br/>93.3% accuracy · 3.64/5 judge<br/>Skills + Knowledge combined"]
+            FT_S --> HYB
+            RAG_K --> HYB
+
+            style SKILL fill:#1b5e20,stroke:#66bb6a,color:#fff
+            style KNOW fill:#01579b,stroke:#29b6f6,color:#fff
+            style HYB fill:#4a148c,stroke:#ab47bc,color:#fff
+            style FT_S fill:#2e7d32,stroke:#66bb6a,color:#fff
+            style RAG_S fill:#c62828,stroke:#e53935,color:#fff
+            style RAG_K fill:#0d47a1,stroke:#42a5f5,color:#fff
+            style FT_K fill:#c62828,stroke:#e53935,color:#fff
+        """, height=500)
+
+    with col2:
+        st.markdown("""
+        <div class="green-box">
+        <strong>Fine-Tuning teaches SKILLS</strong><br/>
+        <b>+25pp</b> on sentiment (45% → 70%)<br/>
+        <b>+46pp</b> on numerical (15% → 61%)<br/>
+        <b>100%</b> on domain jargon (vs RAG 0%)
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="blue-box">
+        <strong>RAG provides KNOWLEDGE</strong><br/>
+        <b>86.7%</b> on factual retrieval<br/>
+        <b>3.8/5</b> faithfulness (2x over base)<br/>
+        <b>75-100%</b> on direct document Q&A
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="highlight-box">
+        <strong>HYBRID wins overall</strong><br/>
+        <b>93.3%</b> on RAG strengths<br/>
+        <b>95%</b> on spam detection<br/>
+        <b>100%</b> on cross-doc synthesis & direct retrieval
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="orange-box">
+        <strong>Evidence that they're complementary:</strong><br/>
+        Fine-tuned model scores <b>0%</b> on direct retrieval (has skills but no Meridian data).
+        RAG scores <b>86.7%</b> (has data but no reasoning skills).
+        Together: <b>100%</b>.
+        </div>
+        """, unsafe_allow_html=True)
+
+
+def slide_data_alignment_taxonomy():
+    """Data alignment taxonomy: what RAG actually retrieves"""
+    st.markdown('<p class="slide-title">What RAG Actually Retrieves: 7-Category Taxonomy</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">Classification of RAG impact per test case — from 96% accuracy to actively harmful</p>', unsafe_allow_html=True)
+
+    render_mermaid("""
+    graph TD
+        subgraph TAXONOMY["What RAG Retrieves — Impact on Performance"]
+            direction TB
+            DA["Direct Answer<br/><i>Exact data in KB</i><br/><b>Strong Positive</b>"]
+            LP["Labeled Pattern<br/><i>Near-verbatim example</i><br/><b>Strong Positive → 96% acc</b>"]
+            FO["Formula Only<br/><i>Formula already in question</i><br/><b>Neutral</b>"]
+            FC["Formula + Conflict<br/><i>Redundant formula + wrong data</i><br/><b>Negative → 15% acc</b>"]
+            CD["Conflicting Data<br/><i>Different company's numbers</i><br/><b>Strongly Negative → 5% acc</b>"]
+            IR["Irrelevant<br/><i>Unrelated documents</i><br/><b>Slightly Negative → 10% acc</b>"]
+            NK["Not in KB<br/><i>Domain outside KB scope</i><br/><b>No Effect → 30% acc</b>"]
+        end
+
+        subgraph COVERAGE["KB Coverage Audit — 171 Cases"]
+            COV["Covered: 34 (20%)"]
+            HARM["Actively Harmful: ~51 (30%)"]
+            NOTC["Not Covered: 120 (70%)"]
+        end
+
+        DA & LP --> COV
+        FC & CD --> HARM
+        IR & NK --> NOTC
+
+        style DA fill:#2e7d32,stroke:#66bb6a,color:#fff
+        style LP fill:#2e7d32,stroke:#66bb6a,color:#fff
+        style FO fill:#f9a825,stroke:#fdd835,color:#000
+        style FC fill:#c62828,stroke:#e53935,color:#fff
+        style CD fill:#b71c1c,stroke:#e53935,color:#fff
+        style IR fill:#e65100,stroke:#ff9800,color:#fff
+        style NK fill:#37474f,stroke:#78909c,color:#fff
+        style HARM fill:#b71c1c,stroke:#e53935,color:#fff
+        style COV fill:#2e7d32,stroke:#66bb6a,color:#fff
+    """, height=520)
+
+    st.markdown("""
+    <div class="red-box">
+    <strong>The critical finding:</strong> Only <b>20%</b> of test cases are properly covered by the RAG
+    knowledge base, and <b>~30%</b> are actively harmed by retrieval. RAG performance is entirely
+    determined by knowledge base quality and data alignment — not by the retrieval algorithm.
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def slide_decision_framework_evidence():
+    """Enhanced decision framework with evidence from results"""
+    st.markdown('<p class="slide-title">Decision Framework: Evidence-Based</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">When to use each approach — backed by 253 experiments</p>', unsafe_allow_html=True)
+
+    render_mermaid("""
+    flowchart TD
+        START(["Does the task require<br/><b>NEW REASONING SKILLS?</b><br/><i>math, domain jargon,<br/>specialized classification</i>"])
+
+        START -->|"YES"| FRESH1{"Needs<br/><b>FRESH DATA</b><br/>or citations?"}
+        START -->|"NO"| FRESH2{"Needs<br/><b>FRESH DATA</b><br/>or citations?"}
+
+        FRESH1 -->|"YES"| HYBRID["<b>HYBRID</b><br/>Fine-Tune + RAG<br/>━━━━━━━━━━━━<br/>93.3% RAG Strengths<br/>95% Spam Detection<br/>100% Cross-Doc Synthesis"]
+        FRESH1 -->|"NO"| FINETUNE["<b>FINE-TUNE</b><br/>Best accuracy<br/>━━━━━━━━━━━━<br/>70% Sentiment (+25pp)<br/>61.2% Numerical (+46pp)<br/>~200ms latency"]
+
+        FRESH2 -->|"YES"| RAG_N["<b>RAG</b><br/>Dynamic knowledge<br/>━━━━━━━━━━━━<br/>86.7% Factual Retrieval<br/>3.8/5 Faithfulness<br/>No training required"]
+        FRESH2 -->|"NO"| PROMPT["<b>PROMPT ENG.</b><br/>Quick start<br/>━━━━━━━━━━━━<br/>Hours to deploy<br/>No infra needed"]
+
+        style START fill:#1a237e,stroke:#5c6bc0,color:#fff
+        style HYBRID fill:#4a148c,stroke:#ab47bc,color:#fff
+        style FINETUNE fill:#1b5e20,stroke:#66bb6a,color:#fff
+        style RAG_N fill:#01579b,stroke:#29b6f6,color:#fff
+        style PROMPT fill:#e65100,stroke:#ff9800,color:#fff
+        style FRESH1 fill:#37474f,stroke:#78909c,color:#fff
+        style FRESH2 fill:#37474f,stroke:#78909c,color:#fff
+    """, height=520)
+
+
+def slide_practical_workflow():
+    """Practical workflow: from prototype to production"""
+    st.markdown('<p class="slide-title">From Prototype to Production</p>', unsafe_allow_html=True)
+    st.markdown('<p class="slide-subtitle">The practical 4-phase workflow validated by our benchmark results</p>', unsafe_allow_html=True)
+
+    render_mermaid("""
+    graph LR
+        subgraph PHASE1["Phase 1: Start Fast"]
+            direction TB
+            P1A["Deploy <b>RAG</b><br/>Low cost · No training<br/>Days to launch"]
+            P1B["Measure accuracy<br/>on real queries"]
+            P1A --> P1B
+        end
+
+        subgraph PHASE2["Phase 2: Find Gaps"]
+            direction TB
+            P2A["Identify where<br/>RAG fails"]
+            P2B["Collect failing queries<br/>as training data"]
+            P2A --> P2B
+        end
+
+        subgraph PHASE3["Phase 3: Add Skills"]
+            direction TB
+            P3A["<b>Fine-tune</b> with QLoRA<br/>$5-25 on AWS<br/>500-1000 examples"]
+            P3B["Evaluate on<br/>held-out test set"]
+            P3A --> P3B
+        end
+
+        subgraph PHASE4["Phase 4: Production"]
+            direction TB
+            P4A["Deploy <b>Hybrid</b><br/>FT reasoning + RAG knowledge"]
+            P4B["93.3% accuracy<br/>2x faithfulness<br/>Source citations"]
+            P4A --> P4B
+        end
+
+        PHASE1 --> PHASE2 --> PHASE3 --> PHASE4
+
+        style PHASE1 fill:#01579b,stroke:#29b6f6,color:#fff
+        style PHASE2 fill:#e65100,stroke:#ff9800,color:#fff
+        style PHASE3 fill:#1b5e20,stroke:#66bb6a,color:#fff
+        style PHASE4 fill:#4a148c,stroke:#ab47bc,color:#fff
+    """, height=350)
+
+    st.markdown("---")
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown("""
+        <div class="blue-box">
+        <strong>Phase 1: RAG</strong><br/>
+        Fastest path to value.<br/>
+        Our benchmark shows 86.7% accuracy on factual retrieval with zero training.
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div class="orange-box">
+        <strong>Phase 2: Gaps</strong><br/>
+        Our data shows RAG fails on: domain jargon (0%), numerical reasoning (15%), and adversarial cases (3% KB coverage).
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown("""
+        <div class="green-box">
+        <strong>Phase 3: Fine-Tune</strong><br/>
+        QLoRA on consumer GPU in &lt;4h.<br/>
+        FinBERT: 5K examples → +25pp.<br/>
+        FinQA-7B: 8K examples → +46pp.
+        </div>
+        """, unsafe_allow_html=True)
+    with col4:
+        st.markdown("""
+        <div class="highlight-box">
+        <strong>Phase 4: Hybrid</strong><br/>
+        93.3% accuracy + 3.8/5 faithfulness + source citations.
+        The strongest system in every benchmark.
+        </div>
+        """, unsafe_allow_html=True)
+
+
 def slide_demo_intro():
-    """Slide 21: Live Demo Introduction"""
+    """Live Demo Introduction"""
     st.markdown('<p class="slide-title">Live Demo: See the Difference</p>', unsafe_allow_html=True)
 
     st.markdown("""
@@ -2721,6 +3137,14 @@ SLIDES = [
     ("RAG Strengths: Advantage", slide_rag_strengths_advantage),
     ("RAG Strengths: Judge", slide_rag_strengths_judge),
     ("RAG Strengths: Conclusions", slide_rag_strengths_conclusions),
+    ("Architecture Overview", slide_architecture_overview),
+    ("The Formula Trap", slide_formula_trap_diagram),
+    ("Benchmark Methodology", slide_benchmark_methodology_diagram),
+    ("Adversarial Stress Test", slide_adversarial_overview),
+    ("Knowledge vs Skill", slide_knowledge_vs_skill),
+    ("Data Alignment Taxonomy", slide_data_alignment_taxonomy),
+    ("Decision Framework (Evidence)", slide_decision_framework_evidence),
+    ("Prototype to Production", slide_practical_workflow),
     ("Live Demo", slide_demo_intro),
 ]
 

@@ -1,5 +1,5 @@
 # Presentation Speaker Notes
-**Total slides:** 62
+**Total slides:** 70
 **Generated:** generate_pptx.py
 
 ---
@@ -699,7 +699,55 @@ The key takeaway is that RAG and fine-tuning solve fundamentally different probl
 
 ---
 
-## Slide 62: Thank You
+## Slide 62: Architecture Overview
+
+This slide shows the experimental design. Every test case runs through all 4 approaches using the SAME base architecture -- the only variable is whether we fine-tuned and/or added RAG retrieval. This isolates each strategy's contribution. We evaluate on 3 axes: accuracy metrics, GPT-4o judge scores, and cost/latency.
+
+---
+
+## Slide 63: The Formula Trap
+
+This is the project's most important discovery. The widely-held belief that 'RAG can't help with math' is largely an artifact of benchmark design. When the knowledge base data aligns with the question -- which is always the case in production -- RAG performs dramatically better. The +71.4pp swing uses the exact same model and pipeline, just different data alignment.
+
+---
+
+## Slide 64: Benchmark Methodology
+
+We use 6 benchmark suites covering 253 test cases. Classification tasks use exact label match. Numerical tasks use 5% tolerance. The LLM-as-Judge adds quality assessment beyond simple accuracy -- it scores correctness (50% weight), reasoning quality (30%), and faithfulness to source data (20%).
+
+---
+
+## Slide 65: Adversarial Stress Test
+
+The adversarial benchmark tests 3 attack vectors: noisy retrieval (irrelevant docs), knowledge conflict (contradictory signals), and out-of-distribution inputs. The most counterintuitive finding: Hybrid -- the approach with the most resources -- scores the LOWEST on adversarial ratios (1.86/5). More information creates more confusion when the task requires pure computation.
+
+---
+
+## Slide 66: Knowledge vs Skill
+
+This is the conceptual core of the project. Fine-tuning and RAG solve fundamentally different problems. Fine-tuning teaches SKILLS -- the fine-tuned model scores 0% on direct retrieval because it has reasoning abilities but no Meridian data. RAG provides KNOWLEDGE -- it scores 86.7% on retrieval but 15% on math because it has data but no computation skills. Hybrid combines both for 93.3%.
+
+---
+
+## Slide 67: Data Alignment Taxonomy
+
+We classified what the RAG knowledge base actually provides for each of the 171 test cases. The results are sobering: only 20% are properly covered, 30% are actively harmed. This taxonomy explains why RAG appears to fail on standard benchmarks -- most cases fall into the 'conflicting data' or 'not in KB' categories.
+
+---
+
+## Slide 68: Decision Framework with Evidence
+
+This is the enhanced decision framework backed by all 253 experiments. Each leaf node shows the actual measured results: Hybrid 93.3%, Fine-tune +25-46pp, RAG 86.7% with 3.8/5 faithfulness. The key question: does the task require new reasoning SKILLS? If yes, you need fine-tuning. Does it need fresh DATA? If yes, you need RAG. Both? Hybrid.
+
+---
+
+## Slide 69: From Prototype to Production
+
+This is the practical playbook. Start with RAG for quick wins -- our data shows 86.7% accuracy with zero training. Then identify where RAG fails (jargon, math, adversarial). Use those failures as training data for QLoRA fine-tuning ($5-25 on AWS, <4 hours). Finally deploy a hybrid system combining fine-tuned reasoning with RAG knowledge retrieval for 93.3% accuracy with source citations.
+
+---
+
+## Slide 70: Thank You
 
 Thank you for your attention. Let's open the floor for questions.
 
